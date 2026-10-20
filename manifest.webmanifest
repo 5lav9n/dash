@@ -1,6 +1,6 @@
 {
-  "name": "Мой дашборд",
-  "short_name": "Дашборд",
+  "name": "dash",
+  "short_name": "dash",
   "description": "Личный минималистичный дашборд: задачи, привычки, финансы",
   "start_url": "./index.html",
   "scope": "./",
