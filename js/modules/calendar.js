@@ -62,6 +62,13 @@ function renderCalendar(app) {
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const dayEvents = events.filter(e => e.date === ds);
+    // Маркеры-точки: по одной точке на каждый ТИП события в этот день.
+    // Даже если названия событий не помещаются (на телефоне), точки всё
+    // равно видны — сразу понятно, в каких днях что-то есть.
+    const markerTypes = [...new Set(dayEvents.map(e => e.type))]; // уникальные типы
+    const markers = markerTypes.length
+      ? `<div class="cal-markers">${markerTypes.map(t => `<span class="cal-marker ${t}"></span>`).join('')}</div>`
+      : '';
     cells += `
       <div class="cal-cell ${ds === today ? 'today' : ''}" data-date="${ds}">
         <div>${d}</div>
@@ -70,12 +77,13 @@ function renderCalendar(app) {
             ${e.done ? '✓ ' : ''}${esc(e.title)}
           </div>`).join('')}
         ${dayEvents.length > 3 ? `<div class="cal-event" style="color:var(--muted)">ещё ${dayEvents.length - 3}…</div>` : ''}
+        ${markers}
       </div>`;
   }
 
   app.innerHTML = `
     <h2 class="page-title">📅 Календарь</h2>
-    <p class="page-sub">Нажми на день, чтобы добавить задачу или план. 
+    <p class="page-sub">Нажми на день, чтобы добавить задачу или план. Точки под числом — события в этот день: 
       <span class="dot" style="background:var(--accent)"></span>задача
       <span class="dot" style="background:var(--blue)"></span>финплан
       <span class="dot" style="background:var(--red)"></span>подписка
