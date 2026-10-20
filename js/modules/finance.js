@@ -9,6 +9,11 @@
 
 let finMonth = todayStr().slice(0, 7); // "2026-10" — выбранный месяц отчёта
 
+// Стартовый (ручной) баланс — «сколько денег было до начала учёта».
+// Хранится в localStorage отдельно от операций. Клик по карточке
+// баланса позволяет его изменить в любой момент.
+function getStartBalance() { return Number(DB.get('balanceStart', 0)); }
+
 function getTx()    { return DB.get('transactions', []); }
 function getSubs()  { return DB.get('subscriptions', []); }
 function getGoals() { return DB.get('goals', []); }
@@ -22,8 +27,9 @@ function renderFinance(app) {
   const monthTxs = txs.filter(t => t.date.startsWith(finMonth));
   const income  = monthTxs.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.sum), 0);
   const expense = monthTxs.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.sum), 0);
-  // Баланс = все доходы минус все расходы за всё время
-  const balance = txs.reduce((s, t) => s + (t.type === 'income' ? 1 : -1) * Number(t.sum), 0);
+  // Баланс = стартовая сумма (редактируется по клику)
+  //           + все доходы − все расходы за всё время
+  const balance = getStartBalance() + txs.reduce((s, t) => s + (t.type === 'income' ? 1 : -1) * Number(t.sum), 0);
 
   // Ближайшие списания подписок в течение 14 дней
   const soonSubs = subs.filter(s => s.active).map(s => {
@@ -42,7 +48,9 @@ function renderFinance(app) {
 
     <!-- Итоговые карточки -->
     <div class="grid grid-3">
-      <div class="card sum-card"><span class="badge">Баланс</span>
+      <!-- Клик по карточке баланса — открыть окно редактирования -->
+      <div class="card sum-card" id="balance-card" style="cursor:pointer" title="Нажми, чтобы изменить">
+        <span class="badge">Баланс ✏️</span>
         <div class="sum-value ${balance >= 0 ? 'plus' : 'minus'}">${money(balance)}</div></div>
       <div class="card sum-card"><span class="badge">Доход за месяц</span>
         <div class="sum-value plus">+${money(income)}</div></div>
@@ -125,6 +133,33 @@ function renderFinance(app) {
   `;
 
   // —— Обработчики ——————————————————————————
+
+  // Редактирование баланса: по клику на карточку «Баланс» открываем окно.
+  // Логика простая: пользователь вводит РЕАЛЬную текущую сумму (например,
+  // подсмотрел в банковском приложении), а система сама пересчитывает
+  // стартовую величину = введено − доходы + расходы. Тогда баланс на экране
+  // всегда совпадает с тем, что человек видит в банке.
+  document.getElementById('balance-card').onclick = () => {
+    openModal('Изменить баланс', `
+      <p class="page-sub" style="margin-bottom:10px">Введи сумму, которая у тебя есть сейчас
+        (например, из банковского приложения). Операции менять не нужно — система подстроит расчёт сама.</p>
+      <div class="form-row"><input id="bal-input" type="number" value="${balance}" placeholder="Новый баланс"></div>
+      <button class="btn" id="bal-save">Сохранить</button>
+    `, wrap => {
+      const save = () => {
+        const input = Number(wrap.querySelector('#bal-input').value);
+        if (isNaN(input)) return;
+        // Пересчёт стартового баланса (sumAll = сумма всех доходов−расходов)
+        const sumAll = txs.reduce((s, t) => s + (t.type === 'income' ? 1 : -1) * Number(t.sum), 0);
+        DB.set('balanceStart', input - sumAll);
+        closeModal(); App.refresh();
+      };
+      wrap.querySelector('#bal-save').onclick = save;
+      wrap.querySelector('#bal-input').onkeydown = e => { if (e.key === 'Enter') save(); };
+      wrap.querySelector('#bal-input').focus();
+    });
+  };
+
   document.getElementById('tx-add').onclick = () => {
     const sum = Number(document.getElementById('tx-sum').value);
     if (!sum || sum <= 0) { alert('Введи сумму'); return; }
