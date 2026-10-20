@@ -229,10 +229,18 @@ body {
 .sidebar-bottom { margin-top: auto; display: flex; flex-direction: column; gap: 6px; }
 
 /* ===== Верхняя шапка ===== */
+/* fixed = «приколочена» к верху экрана и никогда не сдвигается.
+   Раньше была sticky, но в iOS-приложениях она вела себя нестабильно
+   и перекрывала заголовки страниц. Теперь контент принудительно
+   сдвигаем вниз на высоту шапки (см. .content ниже) */
 .topbar {
-  position: sticky; top: 0; z-index: 40; /* прилипает к верху при прокрутке */
+  position: fixed; top: 0; z-index: 40;
+  left: 76px; right: 0;                  /* слева — отступ от панели навигации */
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  padding: 16px 34px;
+  padding: 14px 34px;
+  /* env(safe-area-inset-top) — запас под «чёлку» iPhone, чтобы шапка
+     не залезала под системную зону */
+  padding-top: calc(14px + env(safe-area-inset-top));
   background: var(--header);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -246,7 +254,9 @@ body {
 .topbar-actions { display: flex; align-items: center; gap: 8px; }
 
 /* ===== Основная область ===== */
-.content { flex: 1; padding: 30px 34px; max-width: 1140px; width: 100%; }
+/* padding-top = 64px (высота шапки) + чёлка iPhone + 28px запаса —
+   чтобы заголовки страниц никогда не прятались под шапкой */
+.content { flex: 1; padding: calc(92px + env(safe-area-inset-top)) 34px 30px; max-width: 1140px; width: 100%; }
 .page-title {
   font-family: var(--font-head);
   font-size: clamp(20px, 3vw, 26px); /* clamp = автоматический размер: от 20 до 26 px */
@@ -396,6 +406,16 @@ textarea { resize: vertical; min-height: 70px; width: 100%; }
 .cal-event { font-size: 11px; font-weight: 500; padding: 2px 6px; border-radius: 7px; margin-top: 3px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cal-cell.today .cal-event { background: rgba(255,255,255,.25); color: #fff; }
+
+/* Маркер дня: маленькая цветная точка под числом — показывает,
+   что в этот день есть задачи / финпланы / подписки.
+   Цвет точки = тип события (см. легенду на странице) */
+.cal-markers { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; }
+.cal-marker { width: 7px; height: 7px; border-radius: 50%; }
+.cal-marker.task   { background: var(--accent); }
+.cal-marker.plan   { background: var(--blue); }
+.cal-marker.subscr { background: var(--red); }
+.cal-cell.today .cal-marker { background: #fff; } /* на градиентной «сегодня» точки белые */
 .cal-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
 .cal-head h3 { flex: 1; text-align: center; text-transform: capitalize;
   font-family: var(--font-head); font-size: 16px; }
@@ -490,8 +510,9 @@ textarea { resize: vertical; min-height: 70px; width: 100%; }
 /* ===== Адаптивность: планшет и телефон ===== */
 @media (max-width: 900px) {
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
-  .content { padding: 22px; }
-  .topbar { padding: 14px 22px; }
+  /* меняем только боковые отступы, верхний (под шапку) не трогаем */
+  .content { padding-left: 22px; padding-right: 22px; }
+  .topbar { left: 76px; padding-left: 22px; padding-right: 22px; }
 }
 @media (max-width: 700px) {
   body { flex-direction: column; }
@@ -517,16 +538,15 @@ textarea { resize: vertical; min-height: 70px; width: 100%; }
   .sidebar-bottom { margin-top: 0; flex-direction: row; }
   .main-wrap { margin-left: 0; }
   .topbar {
-    position: fixed; top: 0; left: 0; right: 0;   /* приколота к верху */
-    padding: 12px 16px;
+    left: 0;                             /* на телефоне боковой панели нет */
+    padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
     box-shadow: 0 8px 20px rgba(0,0,0,.06);
   }
-  /* сдвигаем контент вниз на примерную высоту шапки */
-  .content { padding-top: 84px; }
   .hide-sm { display: none; }            /* текст кнопки скрываем, остаётся иконка */
-  /* нижний отступ = высота панели + запас, чтобы последние карточки
+  /* отступ сверху = высота шапки (~56px) + чёлка;
+     отступ снизу = высота нижней панели + запас, чтобы последние карточки
      полностью прокручивались над панелью и ничего не терялось */
-  .content { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); }
+  .content { padding: calc(76px + env(safe-area-inset-top)) 16px calc(96px + env(safe-area-inset-bottom)); }
   .cal-cell { min-height: 50px; }
-  .cal-event { display: none; }          /* на телефоне в ячейке — только дата */
+  .cal-event { display: none; }          /* на телефоне в ячейке — только дата + точки-маркеры */
 }
