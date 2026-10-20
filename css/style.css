@@ -1,0 +1,417 @@
+/* ============================================================
+   style.css — дизайн-основа дашборда (v0.3, «чистый современный»)
+
+   Что изменилось в этой версии:
+   • Новая палитра: холодный светлый «эйр»-фон, белая шапка,
+     один сочный акцент — электрический индиго (#5b5bd6),
+     плюс мягкие «мятный / персиковый / лавандовый» вспомогательные цвета.
+   • Левое меню стало тонкой панелью с одними иконками (как в Notion/Figma),
+     а названия разделов вынесены в верхнюю шапку.
+   • Шрифт заголовков заменён на Space Grotesk.
+
+   Как тут всё устроено:
+   1) В :root лежат CSS-переменные — как «константы» для цветов,
+      теней и скруглений. Меняешь значение в одном месте —
+      оно обновляется на всём сайте.
+   2) Дальше стили идут по блокам: оболочка → карточки → кнопки →
+      поля → каждый модуль → адаптивность под телефон.
+   ============================================================ */
+
+:root {
+  /* --- Палитра: «чистый светлый эйр» + индиго-акцент --- */
+  --bg:          #f7f8fa;  /* фон страницы — почти белый с холодной дымкой */
+  --header:      rgba(255,255,255,.82); /* полупрозрачная шапка (стекло) */
+  --card:        #ffffff;  /* фон карточек — чистый белый */
+  --soft:        #f1f3f7;  /* светло-серые блоки, поля, «пилюли» */
+  --accent:      #5b5bd6;  /* главный акцент — электрический индиго */
+  --accent-2:    #8b5cf6;  /* второй цвет для красивых градиентов (фиолетовый) */
+  --accent-dark: #4646b8;  /* акцент при наведении */
+  --text:        #1d2130;  /* основной текст — почти чёрный с синевой */
+  --muted:       #8b93a7;  /* второстепенный текст — серо-голубой */
+  --border:      #e7eaf1;  /* тонкие границы */
+
+  /* Декоративные «пятна» на фоне — едва заметные, холодные */
+  --bg-decor1:   rgba(91, 91, 214, .10);
+  --bg-decor2:   rgba(139, 92, 246, .08);
+  --bg-decor3:   rgba(52, 211, 153, .07);
+
+  /* Цвета статусов: мягкие «пастельные подушечки» + насыщенный текст */
+  --green:  #16a34a;  --green-bg:  #dcfce7;  --green-tx:  #15803d; /* доход / выполнено */
+  --amber:  #d97706;  --amber-bg:  #fef3c7;  --amber-tx:  #b45309; /* в процессе */
+  --red:    #e11d48;  --red-bg:    #ffe4e6;  --red-tx:    #be123c; /* расход / просрочка */
+  --blue:   #2563eb;  --blue-bg:   #dbeafe;  --blue-tx:   #1d4ed8; /* заметки / планы */
+  --violet: #7c3aed;  --violet-bg: #ede9fe;  --violet-tx: #6d28d9; /* вишлист */
+
+  --radius: 18px;
+  /* Тени стали нейтрально-серыми и многослойными — так выглядят
+     современные интерфейсы (без «коричневого» оттенка старых версий) */
+  --shadow: 0 1px 2px rgba(29,33,48,.05), 0 8px 24px rgba(29,33,48,.06);
+  --shadow-hover: 0 2px 4px rgba(29,33,48,.05), 0 16px 40px rgba(91,91,214,.14);
+
+  /* Шрифты: заголовки — геометричный Space Grotesk, текст — Inter */
+  --font-head: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  color: var(--text);
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--bg);
+  /* Три больших «размытых пятна» на фоне — остаются на месте при прокрутке */
+  background-image:
+    radial-gradient(600px 600px at 90% -10%, var(--bg-decor1), transparent 70%),
+    radial-gradient(700px 700px at -10% 95%, var(--bg-decor2), transparent 70%),
+    radial-gradient(500px 500px at 55% 110%, var(--bg-decor3), transparent 70%);
+  background-attachment: fixed;
+}
+
+::selection { background: var(--accent); color: #fff; }
+
+/* Иконки Lucide: подстраиваем размер под контекст */
+.sidebar i[data-lucide], .nav-btn svg, .logo svg { width: 20px; height: 20px; }
+.topbar-actions svg { width: 16px; height: 16px; }
+
+/* ===== Обёртка правой части (шапка + контент) ===== */
+.main-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+/* ===== Левая панель: тонкая, только иконки ===== */
+.sidebar {
+  width: 76px;
+  background: var(--header);
+  backdrop-filter: blur(16px);           /* эффект матового стекла */
+  -webkit-backdrop-filter: blur(16px);   /* то же для Safari/iPhone */
+  border-right: 1px solid var(--border);
+  padding: 18px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  position: sticky; top: 0;              /* панель «прилипает» при прокрутке */
+  height: 100vh;
+}
+.logo {                                  /* квадратик-логотип с градиентом */
+  width: 44px; height: 44px; border-radius: 14px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(91,91,214,.35);
+  flex-shrink: 0;
+}
+.nav { display: flex; flex-direction: column; gap: 6px; }
+.nav-btn {                               /* кнопка = просто иконка */
+  position: relative;
+  border: none; background: transparent;
+  width: 48px; height: 48px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted); cursor: pointer;
+  transition: background .18s, color .18s, transform .12s, box-shadow .18s;
+}
+.nav-label {                             /* подпись скрыта на десктопе:
+                                           показываем её во «всплывающей подсказке» слева */
+  position: absolute; left: calc(100% + 12px); top: 50%; transform: translateY(-50%) scale(.9);
+  background: var(--text); color: #fff;
+  font-size: 12.5px; font-weight: 600; white-space: nowrap;
+  padding: 6px 12px; border-radius: 10px;
+  opacity: 0; pointer-events: none;      /* невидима и не мешает кликам */
+  transition: opacity .15s, transform .15s;
+  z-index: 60;
+}
+.nav-btn:hover { background: var(--soft); color: var(--text); }
+.nav-btn:hover .nav-label { opacity: 1; transform: translateY(-50%) scale(1); }
+.nav-btn:active { transform: scale(.94); }
+.nav-btn.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(91,91,214,.35); /* «парящая» активная кнопка */
+}
+.sidebar-bottom { margin-top: auto; display: flex; flex-direction: column; gap: 6px; }
+
+/* ===== Верхняя шапка ===== */
+.topbar {
+  position: sticky; top: 0; z-index: 40; /* прилипает к верху при прокрутке */
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 16px 34px;
+  background: var(--header);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+.topbar-title h1 {
+  font-family: var(--font-head);
+  font-size: 20px; font-weight: 700; letter-spacing: -.2px;
+}
+.topbar-date { font-size: 13px; color: var(--muted); text-transform: capitalize; }
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
+
+/* ===== Основная область ===== */
+.content { flex: 1; padding: 30px 34px; max-width: 1140px; width: 100%; }
+.page-title {
+  font-family: var(--font-head);
+  font-size: clamp(20px, 3vw, 26px); /* clamp = автоматический размер: от 20 до 26 px */
+  font-weight: 700; letter-spacing: -.3px;
+  margin-bottom: 6px;
+}
+.page-sub { color: var(--muted); margin-bottom: 22px; font-size: 14.5px; }
+
+/* Появление страницы: лёгкое «всплывание» при переключении вкладки */
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+.content > * { animation: page-in .35s ease both; }
+
+/* ===== Карточки ===== */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  margin-bottom: 16px;
+  transition: transform .2s, box-shadow .2s, border-color .2s;
+}
+.card h3 { font-size: 16px; font-weight: 600; margin-bottom: 10px; }
+
+.grid { display: grid; gap: 16px; }
+.grid-2 { grid-template-columns: 1fr 1fr; }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+
+/* ===== Кнопки ===== */
+.btn {
+  border: none; cursor: pointer; font: inherit; font-weight: 600;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  padding: 10px 18px; border-radius: 999px; /* «таблетки» */
+  box-shadow: 0 6px 16px rgba(91,91,214,.28);
+  transition: transform .12s, box-shadow .2s, filter .2s;
+}
+.btn:hover  { filter: brightness(1.07); transform: translateY(-1px);
+              box-shadow: 0 10px 24px rgba(91,91,214,.36); }
+.btn:active { transform: translateY(0) scale(.97); }
+.btn.secondary { background: var(--soft); color: var(--text); box-shadow: none; }
+.btn.secondary:hover { background: #e6e9f2; }
+.btn.danger    { background: transparent; color: var(--red); padding: 6px 8px; box-shadow: none; }
+.btn.small     { padding: 7px 13px; font-size: 13px; }
+/* «Призрачная» кнопка: прозрачная, контур появляется при наведении */
+.btn.ghost {
+  background: transparent; color: var(--muted);
+  border: 1px solid transparent; box-shadow: none;
+  display: inline-flex; align-items: center; gap: 7px;
+}
+.btn.ghost:hover { color: var(--accent); border-color: var(--border); background: var(--card); filter: none;
+                   box-shadow: none; transform: none; }
+
+/* Кнопка-иконка (крестик в модалке и т.п.) */
+.icon-btn {
+  border: none; background: var(--soft); color: var(--muted);
+  width: 30px; height: 30px; border-radius: 50%;
+  cursor: pointer; font-size: 13px; line-height: 1;
+  transition: background .15s, color .15s, transform .12s;
+}
+.icon-btn:hover { background: var(--red-bg); color: var(--red-tx); transform: rotate(90deg); }
+
+/* ===== Поля ввода ===== */
+input, select, textarea {
+  font: inherit; color: var(--text);
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 9px 13px;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+/* «Свечение» вокруг активного поля — фирменный индиго-фокус */
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(91,91,214,.14);
+}
+textarea { resize: vertical; min-height: 70px; width: 100%; }
+
+.form-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.form-row > * { flex: 1; min-width: 130px; }
+
+/* ===== Статусы и метки («пилюли»-бейджи) ===== */
+.badge {
+  display: inline-block; font-size: 12px; font-weight: 600; padding: 3px 10px;
+  border-radius: 999px; background: var(--soft); color: var(--text);
+}
+.badge.done     { background: var(--green-bg);  color: var(--green-tx); }
+.badge.progress { background: var(--amber-bg);  color: var(--amber-tx); }
+.badge.todo     { background: var(--soft);      color: var(--muted); }
+.badge.overdue  { background: var(--red-bg);    color: var(--red-tx); }
+.badge.cat      { background: var(--blue-bg);   color: var(--blue-tx); }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+
+/* ===== Список задач ===== */
+.task-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 16px; border-radius: 16px;
+  background: var(--card); border: 1px solid var(--border);
+  margin-bottom: 9px;
+  box-shadow: 0 1px 2px rgba(29,33,48,.04);
+  transition: transform .15s, box-shadow .2s, border-color .15s;
+}
+.task-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); border-color: #cdd6ff; }
+.task-item.done-task { opacity: .6; background: var(--soft); }
+.task-item.done-task .task-title { text-decoration: line-through; color: var(--muted); }
+.task-title { font-weight: 500; flex: 1; }
+.task-meta { font-size: 12px; color: var(--muted); }
+.check {
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 2px solid #c3c9d9; background: #fff;
+  cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 13px;
+  transition: background .15s, border-color .15s, transform .15s, box-shadow .15s;
+}
+.check:hover { border-color: var(--accent); box-shadow: 0 0 0 5px rgba(91,91,214,.12); }
+.check.checked { background: linear-gradient(135deg, var(--green), #15803d); border-color: var(--green); }
+.check:active { transform: scale(.85); }
+
+/* Фильтры */
+.filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+
+/* ===== Календарь ===== */
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7px; }
+.cal-weekday { text-align: center; font-size: 12px; font-weight: 600; color: var(--muted); padding: 4px; }
+.cal-cell {
+  min-height: 78px; background: var(--card);
+  border: 1px solid var(--border); border-radius: 14px;
+  padding: 7px; cursor: pointer; font-size: 13px;
+  transition: transform .12s, border-color .15s, box-shadow .2s;
+}
+.cal-cell:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow); }
+.cal-cell.today {
+  border: none; font-weight: 700; color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 8px 18px rgba(91,91,214,.35);
+}
+.cal-cell.empty { background: transparent; border: none; cursor: default; box-shadow: none; transform: none; }
+.cal-event { font-size: 11px; font-weight: 500; padding: 2px 6px; border-radius: 7px; margin-top: 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-cell.today .cal-event { background: rgba(255,255,255,.25); color: #fff; }
+.cal-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.cal-head h3 { flex: 1; text-align: center; text-transform: capitalize;
+  font-family: var(--font-head); font-size: 16px; }
+
+/* ===== Заметки ===== */
+.note-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+.note-card textarea { border: none; background: transparent; padding: 0; box-shadow: none; }
+.note-date { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+.saved-hint { font-size: 12px; color: var(--green); margin-left: 8px; font-weight: 600; }
+
+/* ===== Привычки ===== */
+.habit-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 12px 14px; border-radius: 16px;
+  background: var(--card); border: 1px solid var(--border);
+  margin-bottom: 9px;
+  transition: transform .15s, box-shadow .2s;
+}
+.habit-row:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.habit-name { flex: 1; min-width: 140px; font-weight: 600; }
+.habit-days { display: flex; gap: 6px; }
+.day-dot {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 2px solid var(--border); background: #fff;
+  cursor: pointer; font-size: 11px; color: var(--muted);
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .12s, background .15s, border-color .15s;
+}
+.day-dot:hover { transform: scale(1.12); border-color: var(--green); }
+.day-dot.on {
+  background: linear-gradient(135deg, var(--green), #15803d);
+  border-color: var(--green); color: #fff;
+  box-shadow: 0 4px 10px rgba(22,163,74,.35);
+}
+.streak { font-size: 12.5px; color: var(--accent); font-weight: 700; white-space: nowrap; }
+
+/* Прогресс-бар */
+.progress { height: 9px; background: var(--soft); border-radius: 999px; overflow: hidden; }
+.progress > div {
+  height: 100%; border-radius: 999px; transition: width .5s ease;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+
+/* ===== Финансы ===== */
+.sum-card { text-align: center; }
+.sum-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+.sum-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.sum-value { font-family: var(--font-head); font-size: 22px; font-weight: 700; margin-top: 8px; }
+.sum-value.plus  { color: var(--green); }
+.sum-value.minus { color: var(--red); }
+.tx-row { display: flex; gap: 10px; align-items: center; padding: 10px 4px;
+  border-bottom: 1px dashed var(--border); font-size: 14px; }
+.tx-row:last-child { border-bottom: none; }
+.tx-sum { margin-left: auto; font-weight: 700; white-space: nowrap; }
+.tx-sum.in  { color: var(--green); }
+.tx-sum.out { color: var(--red); }
+
+/* ===== Модальное окно ===== */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(20,24,40,.35);
+  backdrop-filter: blur(5px);            /* размытие фона за окном */
+  -webkit-backdrop-filter: blur(5px);
+  display: flex; align-items: center; justify-content: center; z-index: 50;
+  animation: fade-in .2s ease;
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  width: min(480px, 92vw);
+  animation: pop-up .25s cubic-bezier(.34, 1.56, .64, 1); /* «пружинка» */
+}
+@keyframes pop-up { from { opacity: 0; transform: translateY(16px) scale(.96); } to { opacity: 1; transform: none; } }
+.modal-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
+.modal-head h3 { flex: 1; font-family: var(--font-head); font-size: 15px; }
+
+/* ===== Экран «Сегодня» ===== */
+.stat-line { display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 8px 0; font-size: 14px; border-bottom: 1px dashed var(--border); }
+.stat-line:last-of-type { border-bottom: none; }
+/* Карточки на «Сегодня» слегка приподнимаются при наведении */
+#app .grid .card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+
+/* ===== Анимация появления списков (задачи, заметки...) ===== */
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.task-item, .note-card, .habit-row, .sum-card { animation: rise .3s ease both; }
+
+/* Если человек в настройках системы просит «меньше движения» — отключаем анимации */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ===== Адаптивность: планшет и телефон ===== */
+@media (max-width: 900px) {
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .content { padding: 22px; }
+  .topbar { padding: 14px 22px; }
+}
+@media (max-width: 700px) {
+  body { flex-direction: column; }
+  /* Панель превращается в горизонтальную полосу иконок внизу экрана —
+     к большим пальцем удобнее тянуться, как в мобильных приложениях */
+  .sidebar {
+    order: 2;                            /* ставим панель в конец страницы */
+    width: 100%; height: auto; position: sticky; top: auto; bottom: 0;
+    flex-direction: row; justify-content: space-around; align-items: center;
+    overflow-x: auto; padding: 8px 10px; gap: 6px;
+    border-right: none; border-top: 1px solid var(--border);
+  }
+  .logo, .nav-label { display: none; }   /* на телефоне подсказки не нужны */
+  .nav { flex-direction: row; gap: 4px; }
+  .nav-btn { width: 44px; height: 44px; }
+  .sidebar-bottom { margin-top: 0; flex-direction: row; }
+  .main-wrap { order: 1; }
+  .topbar { padding: 12px 16px; }
+  .hide-sm { display: none; }            /* текст кнопки скрываем, остаётся иконка */
+  .content { padding: 16px 16px 24px; }
+  .cal-cell { min-height: 50px; }
+  .cal-event { display: none; }          /* на телефоне в ячейке — только дата */
+}
