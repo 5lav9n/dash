@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <!-- viewport: чтобы сайт был удобным на телефоне (адаптивность) -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Мой дашборд</title>
   <!-- Цвет системной панели телефона в тон сайту (приятно на iPhone) -->
   <meta name="theme-color" content="#f7f8fa">
@@ -60,6 +60,10 @@
         <p id="topbar-date" class="topbar-date"></p> <!-- сегодняшнюю дату пишет JS -->
       </div>
       <div class="topbar-actions">
+        <!-- Переключатель темы: иконку меняет js/theme.js (луна <-> солнце) -->
+        <button class="icon-btn" id="theme-btn" title="Тёмная тема" aria-label="Переключить тему">
+          <i id="theme-icon" data-lucide="moon"></i>
+        </button>
         <button class="btn ghost small" id="export-btn-top" title="Скачать резервную копию">
           <i data-lucide="download"></i><span class="hide-sm">Резервная копия</span>
         </button>
@@ -75,8 +79,9 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 
   <!-- ===== Подключаем скрипты (порядок важен!) ===== -->
-  <script src="js/app.js"></script>       <!-- дирижёр: registerPage должен быть доступен раньше модулей -->
   <script src="js/storage.js"></script>   <!-- работа с localStorage -->
+  <script src="js/theme.js"></script>     <!-- тёмная/светлая тема (нужен DB из storage.js) -->
+  <script src="js/app.js"></script>       <!-- дирижёр: registerPage должен быть доступен раньше модулей -->
   <script src="js/utils.js"></script>     <!-- мелкие вспомогательные функции -->
   <script src="js/ui.js"></script>        <!-- общие элементы интерфейса -->
   <script src="js/modules/tasks.js"></script>
