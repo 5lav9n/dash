@@ -550,3 +550,61 @@ textarea { resize: vertical; min-height: 70px; width: 100%; }
   .cal-cell { min-height: 50px; }
   .cal-event { display: none; }          /* на телефоне в ячейке — только дата + точки-маркеры */
 }
+
+/* ============================================================
+   v0.5 — стили новых блоков: подробности задач, заметки-карточки,
+   полноэкранный календарь, медиатека, быстрые заметки и игры
+   ============================================================ */
+
+/* —— Подробности задачи (подзадачи, комментарии, расходы) —— */
+.task-details { margin-top: 10px; display: grid; gap: 12px; }
+.td-block { background: var(--soft); border-radius: 12px; padding: 10px 12px; }
+.td-label { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+.subtask-line { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 14px; cursor: pointer; }
+.subtask-line input[type="checkbox"] { width: auto; accent-color: var(--accent); }
+.sub-done { text-decoration: line-through; color: var(--muted); }
+.comment-line { display: flex; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--border); font-size: 14px; }
+.comment-line:last-of-type { border-bottom: none; }
+.expand-hint { cursor: pointer; color: var(--accent); text-decoration: underline dotted; }
+
+/* —— Заметки: карточка-превью + даты —— */
+.note-preview { margin: 8px 0; color: var(--muted); font-size: 14px; white-space: pre-wrap; }
+.note-dates { font-size: 11.5px; color: var(--muted); margin-top: 8px; }
+
+/* —— Календарь: крупные ячейки на странице «Расписание» —— */
+.cal-cell.big { min-height: 108px; }
+.cal-num { font-weight: 700; }
+.cal-cell.selected { outline: 2px solid var(--accent); outline-offset: 1px; }
+.agenda-item { display: flex; gap: 10px; align-items: center; padding: 9px 4px; border-bottom: 1px dashed var(--border); }
+.agenda-item:last-of-type { border-bottom: none; }
+.day-dot.dim { opacity: .35; }
+
+/* —— Быстрые заметки на «Сегодня» —— */
+.quick-card { border-left: 4px solid var(--accent); }
+.quick-line { display: flex; align-items: center; gap: 10px; padding: 7px 4px; border-bottom: 1px dashed var(--border); cursor: pointer; }
+.quick-line:last-of-type { border-bottom: none; }
+.quick-line span { flex: 1; }
+.quick-line input[type="checkbox"] { width: auto; accent-color: var(--green); }
+.q-done span { text-decoration: line-through; color: var(--muted); }
+
+/* —— Игры на «Сегодня» —— */
+.games-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.game-card { background: var(--soft); border-radius: 14px; padding: 14px; }
+.game-card.wide { grid-column: 1 / -1; }
+.q-box { text-align: center; }
+.q-big { font-family: var(--font-head); font-size: 26px; font-weight: 800; }
+.q-sub { color: var(--muted); font-size: 13px; margin: 4px 0 10px; }
+.answers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.answer { font-size: 14px; padding: 9px 8px; }
+.answer.right  { background: linear-gradient(135deg, var(--green), #15803d); box-shadow: none; }
+.answer.wrong  { background: linear-gradient(135deg, var(--red), #b91c1c); box-shadow: none; opacity: .8; }
+.score-line { font-size: 13px; color: var(--muted); }
+.fact-text { font-size: 15.5px; line-height: 1.5; margin-bottom: 10px; }
+@media (max-width: 700px) { .games-grid { grid-template-columns: 1fr; } }
+
+/* —— Медиатека —— */
+.media-card { display: flex; flex-direction: column; }
+.media-card strong { font-size: 15px; }
+
+/* Точка маркера «повторяющееся событие» (зелёная) */
+.cal-marker.event { background: var(--green); }
