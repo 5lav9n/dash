@@ -28,7 +28,7 @@ const DB = {
   // Полный экспорт всех данных (пригодится для резервной копии)
   exportAll() {
     const out = {};
-    ['tasks','notes','habits','transactions','subscriptions','goals','wishlist']
+    ['tasks','notes','habits','transactions','subscriptions','goals','wishlist','media','quick']
       .forEach(k => out[k] = this.get(k, []));
     return out;
   },
