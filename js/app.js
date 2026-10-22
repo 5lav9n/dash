@@ -16,8 +16,8 @@ var pages = {}; // сюда модули записывают свои функ�
 // Красивые названия разделов и сегодняшняя дата для шапки сверху.
 // Обновляем их каждый раз, когда показываем новую страницу.
 const PAGE_TITLES = {
-  today: 'Сегодня', tasks: 'Задачи', calendar: 'Календарь', notes: 'Заметки',
-  habits: 'Привычки', finance: 'Финансы', wishlist: 'Вишлист'
+  today: 'Сегодня', tasks: 'Задачи', calendar: 'Календарь', agenda: 'Расписание',
+  notes: 'Заметки', habits: 'Привычки', finance: 'Финансы', wishlist: 'Вишлист', media: 'Медиатека'
 };
 function updateTopbar(name) {
   const h = document.getElementById('topbar-heading');
