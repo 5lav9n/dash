@@ -1,7 +1,9 @@
 /* ============================================================
-   today.js — экран «Сегодня»: главная сводка дня.
-   Собирает короткую выжимку из всех модулей: задачи на сегодня,
-   привычки, ближайшие подписки, заметка дня.
+   today.js — экран «Сегодня» (витрина всего дашборда)
+   Собираем данные из других модулей через window.*Module и
+   DB напрямую: задачи на день, привычки/события, ближайшие
+   подписки, заметка дня + БЫСТРЫЕ ЗАМЕТКИ (todo-лист без
+   категорий) + мини-игры для ребёнка.
    ============================================================ */
 
 function renderToday(app) {
@@ -12,14 +14,14 @@ function renderToday(app) {
     .filter(t => t.status !== 'done' && t.dueDate && t.dueDate <= today);
   const allOpen = (window.TasksModule?.getTasks() || []).filter(t => t.status !== 'done').length;
 
-  // Привычки: отмечено ли сегодня
+  // Привычки и события: отмечено ли сегодня
   const habits = (window.HabitsModule?.getHabits() || []);
-  const habitsDone = habits.filter(h => h.log.includes(today)).length;
+  const habitsDone = habits.filter(h => (h.log || []).includes(today)).length;
 
   // Заметка дня (если есть)
   const dailyNote = DB.get('notes', []).find(n => n.type === 'daily' && n.date === today);
 
-  // Ближайшие списания подписок (используем логику финансового модуля через данные)
+  // Ближайшие списания подписок
   const subs = (window.FinanceModule?.getSubs() || []).filter(s => s.active).map(s => {
     const now = new Date();
     let d = new Date(now.getFullYear(), now.getMonth(), s.chargeDay);
@@ -34,6 +36,17 @@ function renderToday(app) {
     <h2 class="page-title">${hello}! ☀️</h2>
     <p class="page-sub">${prettyDate(today)}</p>
 
+    <!-- Быстрые заметки todo-листом: просто текст, без категорий -->
+    <div class="card quick-card">
+      <h3>⚡ Быстрые заметки</h3>
+      <p class="task-meta" style="margin-bottom:8px">Мини todo-лист: записал идею — отметил галочкой. Хранятся только здесь.</p>
+      <div id="quick-list"></div>
+      <div class="form-row" style="margin-top:8px">
+        <input id="q-input" placeholder="Записать быструю заметку... (Enter)">
+        <button class="btn" id="q-add" style="flex:0 0 auto">＋</button>
+      </div>
+    </div>
+
     <div class="grid grid-2">
       <div class="card">
         <h3>📌 На сегодня (${tasks.length})</h3>
@@ -46,11 +59,11 @@ function renderToday(app) {
       </div>
 
       <div class="card">
-        <h3>🔥 Привычки сегодня</h3>
+        <h3>🔥 Привычки и события сегодня</h3>
         ${habits.length ? habits.map(h => {
-          const on = h.log.includes(today);
-          return `<div class="stat-line"><span>${on ? '✅' : '⬜'} ${esc(h.name)}</span>
-                  <span class="streak">⚡ ${window.HabitsModule.calcStreak(h.log)} дн.</span></div>`;
+          const on = (h.log || []).includes(today);
+          return `<div class="stat-line"><span>${on ? '✅' : '⬜'} ${esc(h.name)}${h.kind === 'event' ? ' 🔁' : ''}</span>
+                  ${h.kind === 'event' ? '' : `<span class="streak">⚡ ${window.HabitsModule.calcStreak(h.log)} дн.</span>`}</div>`;
         }).join('') : '<p class="page-sub" style="margin:8px 0">Привычек пока нет</p>'}
         <p class="task-meta">Отмечено сегодня: ${habitsDone} из ${habits.length}</p>
       </div>
@@ -72,7 +85,62 @@ function renderToday(app) {
         <button class="btn small secondary" onclick="showPage('notes')">К заметкам →</button>
       </div>
     </div>
+
+    <!-- Мини-игры: переводчик, географ, факты -->
+    <div class="card" id="games-widget"></div>
   `;
+
+  setupQuickNotes();
+
+  // Виджет игр рисуем через games.js, если он загрузился
+  if (window.GamesModule) window.GamesModule.renderGamesWidget(document.getElementById('games-widget'));
+}
+
+// —— Быстрые заметки (todo-лист) ————————————————
+// Данные: [{ id, text, done }] — без категорий и дат
+function getQuick() { return DB.get('quick', []); }
+
+function setupQuickNotes() {
+  const list = document.getElementById('quick-list');
+  const input = document.getElementById('q-input');
+  const addBtn = document.getElementById('q-add');
+
+  const render = () => {
+    const items = getQuick();
+    list.innerHTML = items.length ? items.map(q => `
+      <label class="quick-line ${q.done ? 'q-done' : ''}">
+        <input type="checkbox" data-q="${q.id}" ${q.done ? 'checked' : ''}>
+        <span>${esc(q.text)}</span>
+        <button class="btn danger" data-qdel="${q.id}">×</button>
+      </label>`).join('')
+      : '<p class="task-meta">Пока пусто — запиши первую мысль 💡</p>';
+
+    list.querySelectorAll('[data-q]').forEach(cb => cb.onchange = () => {
+      const items = getQuick();
+      items.find(x => x.id === cb.dataset.q).done = cb.checked;
+      DB.set('quick', items);
+      render();
+    });
+    list.querySelectorAll('[data-qdel]').forEach(b => b.onclick = () => {
+      DB.set('quick', getQuick().filter(x => x.id !== b.dataset.qdel));
+      render();
+    });
+  };
+
+  const add = () => {
+    const text = input.value.trim();
+    if (!text) return;
+    const items = getQuick();
+    items.unshift({ id: uid(), text, done: false });
+    DB.set('quick', items);
+    input.value = '';
+    input.focus();
+    render();
+  };
+
+  addBtn.onclick = add;
+  input.onkeydown = e => { if (e.key === 'Enter') add(); };
+  render();
 }
 
 registerPage('today', renderToday);

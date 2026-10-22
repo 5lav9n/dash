@@ -1,18 +1,28 @@
 /* ============================================================
-   notes.js — модуль «Заметки»
+   notes.js — модуль «Заметки» (v0.5: список + отдельное окно)
    Типы: general (общие), daily (на день), weekly (на неделю).
    У daily/weekly есть поле date — дата начала дня/недели.
-   Автосохранение: при вводе текста ждём 500 мс и сохраняем.
+   На странице видны только НАЗВАНИЯ и ДАТЫ. Клик по карточке
+   открывает заметку в отдельном окне с редактированием и
+   автосохранением (ждём 500 мс после последнего нажатия).
    ============================================================ */
 
 let noteSearch = '';       // строка поиска
 let noteFilter = 'all';    // фильтр по типу
 
+const NOTE_TYPES = { general: '📄 Общая', daily: '📅 Дневная', weekly: '🗓 Недельная' };
+
 function getNotes() { return DB.get('notes', []); }
 
-function renderNotes(app) {
-  const TYPE_LABEL = { general: '📄 Общая', daily: '📅 Дневная', weekly: '🗓 Недельная' };
+// Красивое время изменения: "20 октября, 14:35"
+function prettyDateTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) +
+         ', ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+}
 
+function renderNotes(app) {
   let notes = getNotes();
   if (noteFilter !== 'all') notes = notes.filter(n => n.type === noteFilter);
   if (noteSearch) {
@@ -20,11 +30,11 @@ function renderNotes(app) {
     notes = notes.filter(n => (n.text || '').toLowerCase().includes(q) || (n.title || '').toLowerCase().includes(q));
   }
   // Свежие сверху: сортируем по дате изменения наоборот
-  notes.sort((a, b) => (b.updatedAt || '') .localeCompare(a.updatedAt || ''));
+  notes.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
 
   app.innerHTML = `
     <h2 class="page-title">📝 Заметки</h2>
-    <p class="page-sub">Автосохранение — ничего нажимать не нужно, пиши спокойно ✍️</p>
+    <p class="page-sub">Клик по заметке — откроется режим чтения и редактирования. Всё сохраняется само ✍️</p>
 
     <div class="filters">
       <button class="btn" id="n-new">➕ Новая заметка</button>
@@ -39,50 +49,99 @@ function renderNotes(app) {
 
     <div id="notes-list" class="grid grid-2">
       ${notes.length ? notes.map(n => `
-        <div class="card note-card" data-id="${n.id}">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <!-- data-open: клик по всей карточке открывает редактор -->
+        <div class="card note-card" data-open="${n.id}" style="cursor:pointer">
+          <div style="display:flex;justify-content:space-between;align-items:start;gap:8px">
             <div>
               <strong>${esc(n.title || 'Без названия')}</strong>
-              <span class="badge">${TYPE_LABEL[n.type]}</span>
-              ${n.date ? `<span class="badge cat">${prettyDate(n.date)}</span>` : ''}
+              <div style="margin-top:5px">
+                <span class="badge">${NOTE_TYPES[n.type]}</span>
+                ${n.date ? `<span class="badge cat">${prettyDate(n.date)}</span>` : ''}
+              </div>
             </div>
-            <button class="btn danger" data-del="${n.id}">🗑</button>
+            <button class="btn danger" data-del="${n.id}" title="Удалить">🗑</button>
           </div>
-          <textarea data-text="${n.id}" placeholder="Текст заметки...">${esc(n.text || '')}</textarea>
-          <span class="saved-hint" id="hint-${n.id}"></span>
+          <!-- Только превью первых строк, без редактирования прямо в списке -->
+          <p class="note-preview">${esc((n.text || '').slice(0, 90))}${(n.text || '').length > 90 ? '…' : ''}</p>
+          <div class="note-dates">Создана: ${prettyDateTime(n.createdAt)}<br>Изменена: ${prettyDateTime(n.updatedAt)}</div>
         </div>`).join('') : empty('Заметок нет. Создай первую!')}
     </div>
   `;
 
   document.getElementById('n-new').onclick = createNote;
   document.getElementById('n-filter').onchange = e => { noteFilter = e.target.value; App.refresh(); };
-  document.getElementById('n-search').oninput  = e => { noteSearch = e.target.value; renderNotes(app); /* перерисовать список */ 
-    // Возвращаем фокус в поле поиска, чтобы можно было печатать дальше
+  document.getElementById('n-search').oninput  = e => { noteSearch = e.target.value; renderNotes(app);
     const s = document.getElementById('n-search'); s.focus(); s.setSelectionRange(s.value.length, s.value.length); };
 
-  // Удаление
-  app.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
+  // Открытие заметки по клику на карточку
+  app.querySelectorAll('[data-open]').forEach(card => card.onclick = () => openNoteEditor(card.dataset.open));
+
+  // Удаление (останавливаем всплытие клика, чтобы не открылся редактор)
+  app.querySelectorAll('[data-del]').forEach(b => b.onclick = (e) => {
+    e.stopPropagation();
     if (!confirm('Удалить заметку?')) return;
     DB.set('notes', getNotes().filter(n => n.id !== b.dataset.del));
     App.refresh();
   });
+}
 
-  // —— АВТОСОХРАНЕНИЕ ——————————————————————
-  // debounce: пока человек печатает, мы НЕ сохраняем каждый символ.
-  // Ждём паузу 500 мс после последнего нажатия — и только тогда пишем в localStorage.
-  const timers = {};
-  app.querySelectorAll('[data-text]').forEach(ta => {
-    ta.oninput = () => {
-      const id = ta.dataset.text;
-      clearTimeout(timers[id]);
-      timers[id] = setTimeout(() => {
+// —— Отдельное окно заметки с автосохранением ————————————
+function openNoteEditor(id) {
+  const note = getNotes().find(n => n.id === id);
+  if (!note) return;
+
+  openModal(NOTE_TYPES[note.type] + ' заметка', `
+    <div class="form-row">
+      <input id="ne-title" placeholder="Название" value="${esc(note.title || '')}">
+    </div>
+    <textarea id="ne-text" placeholder="Текст заметки..." style="min-height:220px">${esc(note.text || '')}</textarea>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+      <span class="saved-hint" id="ne-hint"></span>
+      <span class="task-meta" style="margin-left:auto">Изменена: ${prettyDateTime(note.updatedAt)}</span>
+    </div>
+  `, wrap => {
+    const ta = wrap.querySelector('#ne-text');
+    const ti = wrap.querySelector('#ne-title');
+    const hint = wrap.querySelector('#ne-hint');
+
+    // Автосохранение с debounce: пока печатаешь — не сохраняем каждый символ,
+    // ждём паузу 500 мс и только тогда пишем в localStorage
+    let timer = null;
+    const autosave = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
         const notes = getNotes();
-        const n = notes.find(n => n.id === id);
-        if (n) { n.text = ta.value; n.updatedAt = new Date().toISOString(); DB.set('notes', notes); }
-        const hint = document.getElementById('hint-' + id);
-        if (hint) { hint.textContent = 'сохранено ✓'; setTimeout(() => hint.textContent = '', 1500); }
+        const n = notes.find(x => x.id === id);
+        if (!n) return;
+        n.title = ti.value.trim();
+        n.text = ta.value;
+        n.updatedAt = new Date().toISOString();
+        DB.set('notes', notes);
+        hint.textContent = 'сохранено ✓';
+        setTimeout(() => hint.textContent = '', 1500);
       }, 500);
     };
+    ta.oninput = autosave;
+    ti.oninput = autosave;
+
+    // При закрытии окна немедленно дописываем несохранённое
+    // (MutationObserver следит, когда окно удалили из страницы)
+    const observer = new MutationObserver(() => {
+      if (!document.body.contains(wrap)) { observer.disconnect(); flush(); }
+    });
+    observer.observe(document.body, { childList: true });
+    function flush() {
+      clearTimeout(timer);
+      const notes = getNotes();
+      const n = notes.find(x => x.id === id);
+      if (n && (n.title !== ti.value.trim() || n.text !== ta.value)) {
+        n.title = ti.value.trim(); n.text = ta.value;
+        n.updatedAt = new Date().toISOString();
+        DB.set('notes', notes);
+      }
+      if (App.currentPage === 'notes') renderNotes(document.getElementById('app'));
+    }
+    ta.focus();
   });
 }
 
@@ -118,7 +177,7 @@ function createNote() {
       // Для недельной заметки автоматически округляем дату до понедельника
       if (typeSel.value === 'weekly' && date) date = todayStr(mondayOf(new Date(date + 'T00:00:00')));
       const notes = getNotes();
-      notes.push({
+      const note = {
         id: uid(),
         title: wrap.querySelector('#nt-title').value.trim(),
         text: wrap.querySelector('#nt-text').value,
@@ -126,12 +185,16 @@ function createNote() {
         date,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      });
+      };
+      notes.push(note);
       DB.set('notes', notes);
       closeModal();
       App.refresh();
+      // Сразу открываем новую заметку для редактирования
+      openNoteEditor(note.id);
     };
   });
 }
 
 registerPage('notes', renderNotes);
+window.NotesModule = { getNotes };

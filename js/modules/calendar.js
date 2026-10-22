@@ -1,9 +1,10 @@
 /* ============================================================
-   calendar.js — модуль «Календарь»
+   calendar.js — модуль «Календарь» (v0.5)
    Показывает месяц и собирает события из РАЗНЫХ источников:
-   задачи (с inCalendar), подписки, финпланы. Сам календарь
-   ничего не хранит — только собирает. Это удобно: данные живут
-   в своих модулях, а календарь их «читает».
+   задачи (с inCalendar), подписки, финпланы + повторяющиеся
+   события из раздела «Привычки». Сам календарь ничего не
+   хранит — только собирает. Это удобно: данные живут в своих
+   модулях, а календарь их «читает».
    ============================================================ */
 
 // Текущий просматриваемый месяц (переменные живут внутри модуля)
@@ -11,14 +12,18 @@ let calDate = new Date(); // дата внутри текущего месяца
 
 // Цвета типов событий
 const EVENT_COLORS = {
-  task:   'var(--accent)',
-  plan:   'var(--blue)',
-  subscr: 'var(--red)',
+  task:    'var(--accent)',
+  plan:    'var(--blue)',
+  subscr:  'var(--red)',
+  event:   'var(--green)',   // повторяющиеся события из «Привычек»
 };
 
 // Собираем все события в виде плоского списка:
 // [{ date:'2026-10-20', title:'...', type:'task' }, ...]
-function getAllEvents() {
+// monthY/monthM — для каких месяцев генерировать повторы (по умолчанию — экран месяца)
+function getAllEvents(monthY, monthM) {
+  const y = monthY ?? calDate.getFullYear();
+  const m = monthM ?? calDate.getMonth();
   const events = [];
 
   // 1) Задачи, помеченные «показывать в календаре»
@@ -29,12 +34,11 @@ function getAllEvents() {
 
   // 2) Финансовые планы (цели) — дата targetDate
   DB.get('goals', []).forEach(g => {
-    if (g.targetDate)
+    if (g.targetDate && g.goalType !== 'custom')
       events.push({ date: g.targetDate, title: '💰 ' + g.title, type: 'plan' });
   });
 
   // 3) Подписки — день списания повторяется каждый месяц
-  const y = calDate.getFullYear(), m = calDate.getMonth();
   DB.get('subscriptions', []).forEach(s => {
     if (!s.active) return;
     const day = Number(String(s.chargeDay).padStart(2, '0'));
@@ -43,6 +47,18 @@ function getAllEvents() {
     events.push({ date: `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`,
                   title: '🔁 ' + s.name, type: 'subscr' });
   });
+
+  // 4) Повторяющиеся события из раздела «Привычки»
+  const hm = window.HabitsModule;
+  if (hm?.getHabits) {
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    hm.getHabits().filter(h => h.kind === 'event').forEach(h => {
+      for (let d = 1; d <= daysInMonth; d++) {
+        const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        if (hm.isDue(h, ds)) events.push({ date: ds, title: '🗓 ' + h.name, type: 'event', habitId: h.id });
+      }
+    });
+  }
 
   return events;
 }
@@ -67,7 +83,7 @@ function renderCalendar(app) {
     // равно видны — сразу понятно, в каких днях что-то есть.
     const markerTypes = [...new Set(dayEvents.map(e => e.type))]; // уникальные типы
     const markers = markerTypes.length
-      ? `<div class="cal-markers">${markerTypes.map(t => `<span class="cal-marker ${t}"></span>`).join('')}</div>`
+      ? `<div class="cal-markers">${markerTypes.map(t => `<span class="cal-marker ${t}" title="${{task:'Задача',plan:'Финплан',subscr:'Подписка',event:'Событие'}[t]}"></span>`).join('')}</div>`
       : '';
     cells += `
       <div class="cal-cell ${ds === today ? 'today' : ''}" data-date="${ds}">
@@ -83,10 +99,11 @@ function renderCalendar(app) {
 
   app.innerHTML = `
     <h2 class="page-title">📅 Календарь</h2>
-    <p class="page-sub">Нажми на день, чтобы добавить задачу или план. Точки под числом — события в этот день: 
+    <p class="page-sub">Нажми на день, чтобы добавить задачу или план. Точки под числом — события в этот день:
       <span class="dot" style="background:var(--accent)"></span>задача
       <span class="dot" style="background:var(--blue)"></span>финплан
       <span class="dot" style="background:var(--red)"></span>подписка
+      <span class="dot" style="background:var(--green)"></span>повтор. событие
     </p>
     <div class="card">
       <div class="cal-head">
@@ -94,6 +111,7 @@ function renderCalendar(app) {
         <h3>${monthName(y, m)}</h3>
         <button class="btn secondary small" id="cal-next">→</button>
         <button class="btn small" id="cal-today-btn">Сегодня</button>
+        <button class="btn small secondary" id="cal-agenda-btn" title="Подробное расписание">🗒 Расписание</button>
       </div>
       <div class="cal-grid">
         ${['пн','вт','ср','чт','пт','сб','вс'].map(w => `<div class="cal-weekday">${w}</div>`).join('')}
@@ -106,6 +124,7 @@ function renderCalendar(app) {
   document.getElementById('cal-prev').onclick = () => { calDate.setMonth(calDate.getMonth() - 1); App.refresh(); };
   document.getElementById('cal-next').onclick = () => { calDate.setMonth(calDate.getMonth() + 1); App.refresh(); };
   document.getElementById('cal-today-btn').onclick = () => { calDate = new Date(); App.refresh(); };
+  document.getElementById('cal-agenda-btn').onclick = () => showPage('agenda');
 
   app.querySelectorAll('[data-date]').forEach(cell =>
     cell.onclick = () => renderDayPanel(cell.dataset.date));
@@ -121,11 +140,11 @@ function renderDayPanel(date) {
       <h3>${prettyDate(date)}</h3>
       ${events.length ? events.map(e => `
         <div class="tx-row"><span class="dot" style="background:${EVENT_COLORS[e.type]}"></span>
-        ${esc(e.title)} <span class="badge">${{task:'Задача',plan:'Финплан',subscr:'Подписка'}[e.type]}</span></div>`).join('')
+        ${esc(e.title)} <span class="badge">${{task:'Задача',plan:'Финплан',subscr:'Подписка',event:'Событие'}[e.type]}</span></div>`).join('')
         : '<p class="page-sub" style="margin:8px 0">Пусто</p>'}
       <div class="form-row" style="margin-top:12px">
         <input id="dp-title" placeholder="Быстро добавить на этот день...">
-        <select id="dp-type" style="flex:0 0 160px">
+        <select id="dp-type" style="flex:0 0 190px">
           <option value="task">✅ В календарь (задача)</option>
           <option value="plan">💰 Финансовый план</option>
         </select>
@@ -155,3 +174,4 @@ function renderDayPanel(date) {
 }
 
 registerPage('calendar', renderCalendar);
+window.CalendarModule = { getAllEvents, EVENT_COLORS };
