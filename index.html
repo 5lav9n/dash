@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <!-- viewport: чтобы сайт был удобным на телефоне (адаптивность) -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>DASH</title>
+  <title>Мой дашборд</title>
   <!-- Цвет системной панели телефона в тон сайту (приятно на iPhone) -->
   <meta name="theme-color" content="#f7f8fa">
 
@@ -38,10 +38,12 @@
       <button class="nav-btn active" data-page="today"   title="Сегодня"><i data-lucide="sun-medium"></i><span class="nav-label">Сегодня</span></button>
       <button class="nav-btn" data-page="tasks"    title="Задачи"><i data-lucide="check-square"></i><span class="nav-label">Задачи</span></button>
       <button class="nav-btn" data-page="calendar" title="Календарь"><i data-lucide="calendar-days"></i><span class="nav-label">Календарь</span></button>
+      <button class="nav-btn" data-page="agenda" title="Расписание на день"><i data-lucide="list-checks"></i><span class="nav-label">Расписание</span></button>
       <button class="nav-btn" data-page="notes"    title="Заметки"><i data-lucide="pen-line"></i><span class="nav-label">Заметки</span></button>
       <button class="nav-btn" data-page="habits"   title="Привычки"><i data-lucide="flame"></i><span class="nav-label">Привычки</span></button>
       <button class="nav-btn" data-page="finance"  title="Финансы"><i data-lucide="wallet"></i><span class="nav-label">Финансы</span></button>
       <button class="nav-btn" data-page="wishlist" title="Вишлист"><i data-lucide="star"></i><span class="nav-label">Вишлист</span></button>
+      <button class="nav-btn" data-page="media" title="Книги и фильмы"><i data-lucide="clapperboard"></i><span class="nav-label">Медиатека</span></button>
     </nav>
     <div class="sidebar-bottom">
       <!-- Экспорт/импорт — резервные копии и перенос между устройствами -->
@@ -86,11 +88,14 @@
   <script src="js/ui.js"></script>        <!-- общие элементы интерфейса -->
   <script src="js/modules/tasks.js"></script>
   <script src="js/modules/calendar.js"></script>
+  <script src="js/modules/agenda.js"></script>   <!-- полный календарь с расписанием на день -->
   <script src="js/modules/notes.js"></script>
   <script src="js/modules/habits.js"></script>
   <script src="js/modules/finance.js"></script>
   <script src="js/modules/wishlist.js"></script>
-  <script src="js/modules/today.js"></script>
+  <script src="js/modules/media.js"></script>    <!-- книги / фильмы / сериалы -->
+  <script src="js/modules/games.js"></script>    <!-- мини-игры на «Сегодня» (переводчик, географ, факты) -->
+  <script src="js/modules/today.js"></script>    <!-- рисуем последним: использует games.js -->
   <script src="js/backup.js"></script>
 </body>
 </html>
