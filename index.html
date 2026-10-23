@@ -31,21 +31,26 @@
 </head>
 <body>
 
-  <!-- ===== Левая панель-«игольница»: только иконки, как в Notion или Figma ===== -->
+  <!-- ===== Левая панель: тонкая, только иконки; по кнопке «☰» раскрывается с названиями (как в Notion) ===== -->
   <aside class="sidebar">
     <div class="logo" title="Мой дашборд"><i data-lucide="sparkles"></i></div>
     <nav class="nav">
+      <div class="nav-section">Планирование</div>
       <button class="nav-btn active" data-page="today"   title="Сегодня"><i data-lucide="sun-medium"></i><span class="nav-label">Сегодня</span></button>
       <button class="nav-btn" data-page="tasks"    title="Задачи"><i data-lucide="check-square"></i><span class="nav-label">Задачи</span></button>
       <button class="nav-btn" data-page="calendar" title="Календарь"><i data-lucide="calendar-days"></i><span class="nav-label">Календарь</span></button>
       <button class="nav-btn" data-page="agenda" title="Расписание на день"><i data-lucide="list-checks"></i><span class="nav-label">Расписание</span></button>
+      <div class="nav-section">Мысли</div>
       <button class="nav-btn" data-page="notes"    title="Заметки"><i data-lucide="pen-line"></i><span class="nav-label">Заметки</span></button>
       <button class="nav-btn" data-page="habits"   title="Привычки"><i data-lucide="flame"></i><span class="nav-label">Привычки</span></button>
+      <div class="nav-section">Бюджет и желания</div>
       <button class="nav-btn" data-page="finance"  title="Финансы"><i data-lucide="wallet"></i><span class="nav-label">Финансы</span></button>
       <button class="nav-btn" data-page="wishlist" title="Вишлист"><i data-lucide="star"></i><span class="nav-label">Вишлист</span></button>
       <button class="nav-btn" data-page="media" title="Книги и фильмы"><i data-lucide="clapperboard"></i><span class="nav-label">Медиатека</span></button>
     </nav>
     <div class="sidebar-bottom">
+      <!-- Свернуть/раскрыть панель с названиями (на телефоне не нужно — там панель внизу) -->
+      <button class="nav-btn" id="sidebar-toggle" title="Свернуть/раскрыть меню"><i data-lucide="panel-left-close"></i><span class="nav-label">Свернуть меню</span></button>
       <!-- Экспорт/импорт — резервные копии и перенос между устройствами -->
       <button class="nav-btn" id="export-btn" title="Скачать данные"><i data-lucide="download"></i><span class="nav-label">Скачать данные</span></button>
       <button class="nav-btn" id="import-btn" title="Загрузить данные"><i data-lucide="upload"></i><span class="nav-label">Загрузить данные</span></button>
@@ -62,6 +67,10 @@
         <p id="topbar-date" class="topbar-date"></p> <!-- сегодняшнюю дату пишет JS -->
       </div>
       <div class="topbar-actions">
+        <!-- Быстрое создание одной строкой (как Quick Find в Notion): Ctrl+K или кнопка -->
+        <button class="btn small" id="quick-create-btn" title="Быстрое создание (Ctrl+K)">
+          <i data-lucide="zap"></i><span class="hide-sm">Быстро</span>
+        </button>
         <!-- Переключатель темы: иконку меняет js/theme.js (луна <-> солнце) -->
         <button class="icon-btn" id="theme-btn" title="Тёмная тема" aria-label="Переключить тему">
           <i id="theme-icon" data-lucide="moon"></i>
@@ -96,6 +105,7 @@
   <script src="js/modules/media.js"></script>    <!-- книги / фильмы / сериалы -->
   <script src="js/modules/games.js"></script>    <!-- мини-игры на «Сегодня» (переводчик, географ, факты) -->
   <script src="js/modules/today.js"></script>    <!-- рисуем последним: использует games.js -->
+  <script src="js/notion.js"></script>           <!-- v0.6: quick-create, блок-редактор, канбан (расширяет модули) -->
   <script src="js/backup.js"></script>
 </body>
 </html>
