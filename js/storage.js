@@ -28,8 +28,7 @@ const DB = {
   // Полный экспорт всех данных (пригодится для резервной копии)
   exportAll() {
     const out = {};
-    ['tasks','notes','habits','transactions','subscriptions','goals','wishlist','media','quick']
-      .forEach(k => out[k] = this.get(k, []));
+    DB_KEYS.forEach(k => out[k] = this.get(k, []));
     return out;
   },
 
@@ -42,3 +41,8 @@ const DB = {
 // Стартовые категории задач (потом можно дать пользователю их редактировать)
 const TASK_CATEGORIES = ['Работа', 'Учёба', 'Дом', 'Здоровье', 'Личное', 'Финансы'];
 const FIN_CATEGORIES  = ['Еда', 'Транспорт', 'Жильё', 'Развлечения', 'Здоровье', 'Обучение', 'Доход', 'Другое'];
+
+/* v0.6: список всех ключей данных — используется экспортом (backup.js),
+   импортом и быстрой очисткой. Добавил новый раздел? — допиши ключ сюда. */
+const DB_KEYS = ['tasks','notes','habits','transactions','subscriptions','goals',
+                 'wishlist','media','quick','boosters','balanceStart','sidebarOpen'];

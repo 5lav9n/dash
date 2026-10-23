@@ -72,6 +72,31 @@ const exportTop = document.getElementById('export-btn-top');
 if (exportTop) exportTop.addEventListener('click', () =>
   document.getElementById('export-btn').click());
 
+/* ===== v0.6: «нотионовские» элементы оболочки ===== */
+
+// Кнопка «＋» в шапке — быстрое создание (функция из js/notion.js)
+const quickBtn = document.getElementById('quick-create-btn');
+if (quickBtn) quickBtn.addEventListener('click', () => window.Notion?.openQuickCreate());
+
+// Ctrl+K (на Mac — Cmd+K) открывает быстрое создание, как Quick Find в Notion
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    window.Notion?.openQuickCreate();
+  }
+});
+
+// Кнопка-«гамбургер»: раскрыть/свернуть сайдбар с названиями разделов.
+// Выбор запоминается в localStorage — при следующем открытии всё как ты оставил.
+const sideToggle = document.getElementById('sidebar-toggle');
+function applySidebar(open) {
+  document.documentElement.classList.toggle('sidebar-open', open);
+  DB.set('sidebarOpen', open ? 1 : 0);
+}
+if (sideToggle) sideToggle.addEventListener('click', () =>
+  applySidebar(!document.documentElement.classList.contains('sidebar-open')));
+if (DB.get('sidebarOpen', 0)) document.documentElement.classList.add('sidebar-open');
+
 // Старт: открываем страницу из адреса (или «Сегодня» по умолчанию)
 showPage(location.hash.slice(1) || 'today');
 
