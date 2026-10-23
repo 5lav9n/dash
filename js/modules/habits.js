@@ -139,6 +139,12 @@ function editHabit(id, kind) {
         <option value="monthly" ${h?.repeat==='monthly'?'selected':''}>Число месяца</option>
       </select>
       <input id="hb-day" type="number" min="1" max="31" placeholder="Число (1–31)" value="${h?.day || ''}" style="flex:0 0 130px">
+    </div>
+    <div class="form-row">
+      <label style="font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px">
+        🕠 Время события (необязательно)
+        <input id="hb-time" type="time" value="${h?.time || ''}" style="flex:0 0 140px">
+      </label>
     </div>` : ''}
     <button class="btn" id="hb-save">Сохранить</button>
   `, wrap => {
@@ -157,6 +163,7 @@ function editHabit(id, kind) {
       if (isEvent) {
         data.repeat = wrap.querySelector('#hb-repeat').value;
         data.day = Number(wrap.querySelector('#hb-day').value) || 1;
+        data.time = wrap.querySelector('#hb-time').value; // '14:30' или
       }
       if (h) { h.name = name; Object.assign(h, data); }
       else {
