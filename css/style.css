@@ -737,3 +737,36 @@ textarea { resize: vertical; min-height: 70px; width: 100%; }
 
 /* Точка маркера «повторяющееся событие» (зелёная) */
 .cal-marker.event { background: var(--green); }
+
+/* ============================================================
+   v0.7 — календарь: переключатель «Месяц/Неделя» и недельная сетка
+   ============================================================ */
+
+/* Переключатель режимов (сегментированный контрол, как в iOS/Notion) */
+.seg { display: inline-flex; background: var(--soft); border-radius: 14px; padding: 4px; gap: 4px; margin-bottom: 14px; }
+.seg-btn { border: none; background: transparent; padding: 8px 18px; border-radius: 11px;
+  font: inherit; font-weight: 600; font-size: 14px; color: var(--muted); cursor: pointer; transition: all .2s; }
+.seg-btn:hover { color: var(--text); }
+.seg-btn.active { background: var(--card); color: var(--accent); box-shadow: 0 2px 8px rgba(20,20,50,.10); }
+
+/* Небольшое поле времени в панелях */
+.small-input { padding: 8px 10px; font-size: 13px; flex: 0 0 auto; width: auto; }
+
+/* Горизонтальная прокрутка недельной сетки на узких экранах */
+.week-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.week-grid { min-width: 720px; }               /* 7 колонок не должны спрессовываться */
+.wg-head-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7px; margin-bottom: 7px; }
+.wg-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7px; margin-bottom: 7px; }
+.cw-dayhead { text-align: center; padding: 6px 0; border-radius: 12px; }
+.cw-dayhead.today { background: linear-gradient(135deg, var(--accent), #8b5cf6); color: #fff; }
+.cw-dow { font-size: 11.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.cw-dayhead.today .cw-dow { color: rgba(255,255,255,.85); }
+.cw-num { font-size: 19px; font-weight: 800; }
+.cw-col { min-height: 130px; background: var(--soft); border-radius: 14px; padding: 7px;
+  border: 1.5px solid transparent; cursor: pointer; transition: border-color .2s, box-shadow .2s; }
+.cw-col:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+.cw-col.today { background: var(--accent-bg, rgba(91,91,214,.07)); border-color: rgba(91,91,214,.25); }
+.cw-empty { color: var(--muted); opacity: .45; text-align: center; margin-top: 34px; font-size: 22px; }
+
+/* Время внутри карточки события */
+.ce-time { font-weight: 800; font-size: 10.5px; opacity: .9; }
