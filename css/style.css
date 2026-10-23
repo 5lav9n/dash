@@ -185,6 +185,7 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 14px;
+  transition: width .25s ease, padding .25s ease; /* плавное раскрытие как в Notion */
   /* fixed = панель «висит» на месте и никогда не уезжает при прокрутке.
      В отличие от sticky она не зависит от высоты соседних блоков —
      надёжнее на всех экранах и в iOS-приложениях */
@@ -199,7 +200,31 @@ body {
   box-shadow: 0 8px 20px rgba(91,91,214,.35);
   flex-shrink: 0;
 }
-.nav { display: flex; flex-direction: column; gap: 6px; }
+.nav { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+/* Подсказки-разделители («Личное», «Ещё») — как секции в сайдбаре Notion */
+.nav-section {
+  display: none;                          /* в свёрнутом режиме не видно */
+  font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase;
+  color: var(--muted); padding: 12px 8px 4px; text-align: left;
+}
+/* Режим «широкий сайдбар» (класс sidebar-open вешает js/app.js):
+   панель раскрывается, иконки едут влево, рядом появляются названия —
+   почти как в Notion. На телефоне этот режим недоступен. */
+html.sidebar-open .sidebar { width: 232px; align-items: stretch; padding: 18px 12px; }
+html.sidebar-open .main-wrap { margin-left: 232px; }
+html.sidebar-open .topbar { left: 232px; }
+html.sidebar-open .nav-btn { width: 100%; height: 38px; justify-content: flex-start; gap: 12px; padding: 0 12px; }
+html.sidebar-open .nav-btn svg { flex-shrink: 0; }
+html.sidebar-open .nav-label {
+  position: static; transform: none; opacity: 1; background: none; color: inherit;
+  padding: 0; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+html.sidebar-open .nav-btn:hover .nav-label { transform: none; }
+html.sidebar-open .nav-section { display: block; }
+html.sidebar-open .logo { margin-left: 4px; }
+/* Плавный сдвиг контента при раскрытии */
+.main-wrap { transition: margin-left .25s ease; }
+.topbar { transition: left .25s ease; }
 .nav-btn {                               /* кнопка = просто иконка */
   position: relative;
   border: none; background: transparent;
@@ -514,8 +539,22 @@ textarea { resize: vertical; min-height: 70px; width: 100%; }
   .content { padding-left: 22px; padding-right: 22px; }
   .topbar { left: 76px; padding-left: 22px; padding-right: 22px; }
 }
+/* На планшете и телефоне НЕ даём широкому сайдбару перекрывать контент —
+   на малых экранах панель всё равно превращается в нижнюю полосу */
+@media (max-width: 1024px) {
+  html.sidebar-open .main-wrap { margin-left: 76px; }
+  html.sidebar-open .topbar { left: 76px; }
+  html.sidebar-open .sidebar { width: 76px; align-items: center; }
+  html.sidebar-open .nav-btn { width: 48px; height: 48px; justify-content: center; gap: 0; padding: 0; }
+  html.sidebar-open .nav-label { display: none; }
+  html.sidebar-open .nav-section { display: none; }
+}
 @media (max-width: 700px) {
   body { flex-direction: column; }
+  /* Нижняя панель на телефоне: широкое раскрытие недоступно — отключаем его */
+  html.sidebar-open .main-wrap { margin-left: 0; }
+  html.sidebar-open .topbar { left: 0; }
+  html.sidebar-open .sidebar { width: 100%; }
   /* Панель превращается в горизонтальную полосу иконок внизу экрана —
      к большим пальцем удобнее тянуться, как в мобильных приложениях */
   .sidebar {
@@ -605,6 +644,96 @@ textarea { resize: vertical; min-height: 70px; width: 100%; }
 /* —— Медиатека —— */
 .media-card { display: flex; flex-direction: column; }
 .media-card strong { font-size: 15px; }
+
+/* ============================================================
+   v0.6 — «Notion-подобный» слой:
+   • быстрое создание (Quick Find) по Ctrl+K / кнопке «＋»,
+   • блок-редактор заметок (заголовок, текст, чек-листы, ссылки),
+   • канбан-доска задач,
+   • страницы-бусты и вызов разделов одной строкой («📅 25 октября ...»).
+   ============================================================ */
+
+/* —— Быстрое создание (как Quick Find в Notion) —— */
+.qf-box { width: min(560px, 94vw); align-self: flex-start; margin-top: 12vh; }
+.qf-input {
+  width: 100%; border: none; background: transparent; font-size: 17px; padding: 4px 2px 12px;
+}
+.qf-input:focus { box-shadow: none; }
+.qf-hint { font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--border); padding-top: 10px; line-height: 1.8; }
+.qf-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.qf-chip {
+  border: 1px solid var(--border); background: var(--soft); color: var(--text);
+  border-radius: 999px; padding: 6px 12px; font-size: 13px; cursor: pointer; font-weight: 600;
+}
+.qf-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+/* —— Блок-редактор заметок (небольшой аналог блоков Notion) —— */
+.nb-blocks { display: grid; gap: 4px; min-height: 160px; }
+.nb-title {
+  width: 100%; border: none; background: transparent; padding: 2px 2px 6px;
+  font-family: var(--font-head); font-size: 22px; font-weight: 700; letter-spacing: -.3px;
+}
+.nb-title:focus { box-shadow: none; }
+.nb-title::placeholder { color: var(--muted); opacity: .5; }
+.nb-block { position: relative; display: flex; align-items: flex-start; gap: 6px; padding-left: 22px; }
+.nb-handle {                              /* «⋮⋮» слева от блока — как в Notion */
+  position: absolute; left: -2px; top: 4px; border: none; background: transparent;
+  color: var(--muted); cursor: grab; font-size: 14px; padding: 2px 4px; border-radius: 6px;
+  opacity: 0; transition: opacity .15s;
+}
+.nb-block:hover .nb-handle { opacity: 1; }
+.nb-handle:hover { background: var(--soft); color: var(--text); }
+.nb-text {
+  flex: 1; border: none; background: transparent; padding: 5px 2px; font-size: 15px;
+  line-height: 1.55; resize: none; overflow: hidden; min-height: 30px; outline: none;
+  color: var(--text); white-space: pre-wrap; word-break: break-word;
+}
+.nb-check { width: auto; accent-color: var(--accent); margin-top: 8px; cursor: pointer; }
+.nb-check + .nb-text.checked-line { text-decoration: line-through; color: var(--muted); }
+.nb-link {
+  color: var(--accent); text-decoration: underline; cursor: pointer;
+  padding: 5px 2px; font-size: 15px; flex: 1; word-break: break-all;
+}
+.nb-empty-hint { color: var(--muted); font-size: 14px; padding: 8px 2px; }
+.nb-toolbar { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+.nb-toolbar .btn { padding: 7px 12px; font-size: 13px; }
+.nb-callout {
+  flex: 1; background: var(--amber-bg); border-radius: 12px; padding: 10px 12px;
+  font-size: 15px; color: var(--amber-tx);
+}
+
+/* —— Канбан-доска задач (три колонки-статуса) —— */
+.kanban { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: start; }
+.kb-col { background: var(--soft); border-radius: 16px; padding: 12px; min-height: 120px; }
+.kb-col h4 { font-size: 13px; font-weight: 700; margin-bottom: 10px; display: flex; justify-content: space-between; color: var(--muted); }
+.kb-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 10px 12px; margin-bottom: 8px; font-size: 14px; cursor: grab;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04); transition: transform .12s, box-shadow .2s;
+}
+.kb-card:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+.kb-card.dragging { opacity: .5; transform: rotate(2deg); }
+.kb-card .kb-meta { font-size: 11.5px; color: var(--muted); margin-top: 4px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.kb-col.drag-over { outline: 2px dashed var(--accent); outline-offset: -2px; }
+@media (max-width: 700px) { .kanban { grid-template-columns: 1fr; } }
+
+/* —— Карточка «Буст дня» на «Сегодня» —— */
+.boost-card { border-left: 4px solid var(--violet); }
+.boost-text { font-size: 15.5px; line-height: 1.55; white-space: pre-wrap; }
+
+/* —— Модификаторы строк на доске —— */
+.task-view-switch { display: inline-flex; background: var(--soft); border-radius: 999px; padding: 3px; gap: 3px; }
+.task-view-switch button { border: none; background: transparent; padding: 6px 14px; border-radius: 999px; font: inherit; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.task-view-switch button.on { background: var(--card); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+
+/* —— Таблица-«база» заметок (Notion Table view) —— */
+.notes-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.notes-table th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .4px;
+  color: var(--muted); padding: 10px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.notes-table td { padding: 8px; border-bottom: 1px dashed var(--border); vertical-align: middle; }
+.notes-table tr:hover td { background: var(--soft); }
+.notes-table .nt-name { border: none; background: transparent; padding: 4px 6px; font-weight: 600; width: 100%; min-width: 140px; }
+.notes-table .nt-name:focus { box-shadow: none; border-bottom: 2px solid var(--accent); }
 
 /* Точка маркера «повторяющееся событие» (зелёная) */
 .cal-marker.event { background: var(--green); }
