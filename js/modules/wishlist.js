@@ -18,7 +18,12 @@ function renderWishlist(app) {
   app.innerHTML = `
     <h2 class="page-title">⭐ Вишлист</h2>
     <p class="page-sub">Желания можно связать с финансовой целью и видеть прогресс накопления</p>
-    <button class="btn" id="w-add" style="margin-bottom:16px">➕ Новое желание</button>
+    <div class="form-row" style="margin-bottom:16px">
+      <!-- v0.6: быстрое добавление одной строкой (парсер из notion.js):
+           «500₽ наушники» или просто «наушники» — создастся желание -->
+      ${window.Notion ? `<input id="w-quick" placeholder="⚡ Быстро: велосипед 15000₽ — и Enter" style="flex:2;min-width:220px">` : ''}
+      <button class="btn" id="w-add" style="flex:0 0 auto">➕ Новое желание</button>
+    </div>
 
     <div class="grid grid-2">
       ${wishes.length ? wishes.map(w => {
@@ -52,6 +57,23 @@ function renderWishlist(app) {
   `;
 
   document.getElementById('w-add').onclick = () => editWish(null);
+
+  // Быстрое добавление одной строкой: «велосипед 15000₽» → желание с ценой
+  const wQuick = document.getElementById('w-quick');
+  if (wQuick) wQuick.onkeydown = e => {
+    if (e.key !== 'Enter' || !window.Notion) return;
+    const p = window.Notion.quickParse(wQuick.value);
+    if (!p.title) return;
+    // ищем цену в исходной строке: число перед ₽ или «руб»
+    const mPrice = String(wQuick.value).match(/(\d[\d\s]*)\s*(?:₽|руб)/i);
+    const wishes = getWishlist();
+    wishes.push({ id: uid(), title: p.title, description: '',
+                  price: mPrice ? Number(mPrice[1].replace(/\s/g, '')) : 0,
+                  status: 'want', priority: p.priority === 'high' ? 'high' : 'mid', link: '', goalId: null });
+    DB.set('wishlist', wishes);
+    wQuick.value = '';
+    App.refresh();
+  };
   app.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editWish(b.dataset.edit));
   app.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
     if (!confirm('Удалить желание?')) return;

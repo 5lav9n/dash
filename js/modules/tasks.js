@@ -5,6 +5,9 @@
      subtasks: [{id, title, done}], comments: [{id, text, date}] }
    status: 'todo' | 'progress' | 'done'
    priority: 'low' | 'mid' | 'high'
+
+   v0.6: добавлен режим «🗂 Доска» (канбан как в Notion) — переключатель
+   над списком; доску рисует window.Notion.renderKanban (js/notion.js).
    ============================================================ */
 
 // Тексты статусов и приоритетов по-русски
@@ -35,12 +38,32 @@ function renderTasks(app) {
   const tasks = getTasks();
 
   app.innerHTML = `
-    <h2 class="page-title">✅ Задачи</h2>
-    <p class="page-sub">Всего: ${tasks.length} · Выполнено: ${tasks.filter(t => t.status === 'done').length}</p>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <h2 class="page-title" style="margin-bottom:0">✅ Задачи</h2>
+      <!-- Переключатель вида: список (как было) / доска-канбан (Notion-style) -->
+      ${window.Notion ? `<div class="task-view-switch">
+        <button data-view="list"  class="${taskView === 'list'  ? 'on' : ''}">☰ Список</button>
+        <button data-view="board" class="${taskView === 'board' ? 'on' : ''}">🗂 Доска</button>
+      </div>` : ''}
+    </div>
+    <p class="page-sub">Всего: ${tasks.length} · Выполнено: ${tasks.filter(t => t.status === 'done').length}${taskView === 'board' ? ' · перетаскивай карточки между колонками 🖱' : ''}</p>
     <div id="task-form" class="card"></div>
     <div class="filters" id="task-filters"></div>
     <div id="task-list"></div>
   `;
+
+  // Кнопки переключения вида (есть только если notion.js загрузился)
+  app.querySelectorAll('[data-view]').forEach(b => b.onclick = () => {
+    taskView = b.dataset.view; App.refresh();
+  });
+
+  // В режиме доски список заменяем канбаном, фильтры прячем
+  if (taskView === 'board' && window.Notion) {
+    document.getElementById('task-filters').hidden = true;
+    window.Notion.renderKanban(document.getElementById('task-list'));
+    renderTaskForm();
+    return;
+  }
 
   renderTaskForm();
   renderFilters();

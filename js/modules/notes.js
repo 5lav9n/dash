@@ -1,14 +1,17 @@
 /* ============================================================
-   notes.js — модуль «Заметки» (v0.5: список + отдельное окно)
+   notes.js — модуль «Заметки» (v0.6: список + блок-редактор)
    Типы: general (общие), daily (на день), weekly (на неделю).
    У daily/weekly есть поле date — дата начала дня/недели.
    На странице видны только НАЗВАНИЯ и ДАТЫ. Клик по карточке
-   открывает заметку в отдельном окне с редактированием и
-   автосохранением (ждём 500 мс после последнего нажатия).
+   открывает заметку в режиме блоков (как страницы Notion):
+   текст, чек-листы, ссылки, вызовы — всё с автосохранением.
+   Если js/notion.js почему-то не загрузился — работает старый
+   простой редактор v0.5 (одним большим полем текста).
    ============================================================ */
 
 let noteSearch = '';       // строка поиска
 let noteFilter = 'all';    // фильтр по типу
+let noteView = 'cards';    // v0.6: 'cards' — сетка карточек, 'table' — таблица-база как в Notion
 
 const NOTE_TYPES = { general: '📄 Общая', daily: '📅 Дневная', weekly: '🗓 Недельная' };
 
@@ -33,8 +36,14 @@ function renderNotes(app) {
   notes.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
 
   app.innerHTML = `
-    <h2 class="page-title">📝 Заметки</h2>
-    <p class="page-sub">Клик по заметке — откроется режим чтения и редактирования. Всё сохраняется само ✍️</p>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <h2 class="page-title" style="margin-bottom:0">📝 Заметки</h2>
+      ${window.Notion ? `<div class="task-view-switch">
+        <button data-nview="cards" class="${noteView === 'cards' ? 'on' : ''}">▦ Карточки</button>
+        <button data-nview="table" class="${noteView === 'table' ? 'on' : ''}">⊞ Таблица</button>
+      </div>` : ''}
+    </div>
+    <p class="page-sub">Клик по заметке — откроется страница-редактор с блоками, как в Notion. Всё сохраняется само ✍️</p>
 
     <div class="filters">
       <button class="btn" id="n-new">➕ Новая заметка</button>
@@ -47,6 +56,31 @@ function renderNotes(app) {
       <input id="n-search" placeholder="🔍 Поиск..." value="${esc(noteSearch)}" style="max-width:220px">
     </div>
 
+    ${noteView === 'table' && window.Notion ? `
+      <!-- Таблица-«база данных» (как Table view в Notion): все заметки сразу видны,
+           название и текст можно править прямо в таблице -->
+      <div class="card" style="padding:6px 14px;overflow-x:auto">
+        <table class="notes-table" id="n-table">
+          <thead><tr><th>Название</th><th>Тип</th><th>Дата</th><th>Блоков</th><th>Изменена</th><th></th></tr></thead>
+          <tbody>
+            ${notes.map(n => {
+              const bc = (n.blocks || []).length || ((n.text || '').split('\n').filter(Boolean).length);
+              return `
+              <tr data-row="${n.id}">
+                <td><input class="nt-name" value="${esc(n.title || 'Без названия')}" data-t="title"></td>
+                <td>${NOTE_TYPES[n.type]}</td>
+                <td>${n.date ? prettyDate(n.date) : '—'}</td>
+                <td style="text-align:center">${bc}</td>
+                <td class="task-meta">${prettyDateTime(n.updatedAt)}</td>
+                <td style="white-space:nowrap">
+                  <button class="btn small secondary" data-open="${n.id}">Открыть</button>
+                  <button class="btn danger" data-del="${n.id}">🗑</button>
+                </td>
+              </tr>`; }).join('')}
+          </tbody>
+        </table>
+        ${notes.length ? '' : empty('Заметок нет. Создай первую!')}
+      </div>` : `
     <div id="notes-list" class="grid grid-2">
       ${notes.length ? notes.map(n => `
         <!-- data-open: клик по всей карточке открывает редактор -->
@@ -57,6 +91,7 @@ function renderNotes(app) {
               <div style="margin-top:5px">
                 <span class="badge">${NOTE_TYPES[n.type]}</span>
                 ${n.date ? `<span class="badge cat">${prettyDate(n.date)}</span>` : ''}
+                ${(n.blocks || []).length ? `<span class="badge done">⬢ ${n.blocks.length} бл.</span>` : ''}
               </div>
             </div>
             <button class="btn danger" data-del="${n.id}" title="Удалить">🗑</button>
@@ -65,16 +100,41 @@ function renderNotes(app) {
           <p class="note-preview">${esc((n.text || '').slice(0, 90))}${(n.text || '').length > 90 ? '…' : ''}</p>
           <div class="note-dates">Создана: ${prettyDateTime(n.createdAt)}<br>Изменена: ${prettyDateTime(n.updatedAt)}</div>
         </div>`).join('') : empty('Заметок нет. Создай первую!')}
-    </div>
+    </div>`}
   `;
+
+  // Переключатель карточки/таблица
+  app.querySelectorAll('[data-nview]').forEach(b => b.onclick = () => { noteView = b.dataset.nview; App.refresh(); });
 
   document.getElementById('n-new').onclick = createNote;
   document.getElementById('n-filter').onchange = e => { noteFilter = e.target.value; App.refresh(); };
-  document.getElementById('n-search').oninput  = e => { noteSearch = e.target.value; renderNotes(app);
-    const s = document.getElementById('n-search'); s.focus(); s.setSelectionRange(s.value.length, s.value.length); };
+  if (noteView !== 'table') {
+    document.getElementById('n-search').oninput  = e => { noteSearch = e.target.value; renderNotes(app);
+      const s = document.getElementById('n-search'); s.focus(); s.setSelectionRange(s.value.length, s.value.length); };
+  } else {
+    // В таблице поиск терял фокус при перерисовке — чиним так же, но через мягкую фильтрацию строк
+    document.getElementById('n-search').oninput = e => { noteSearch = e.target.value;
+      filterTableRows(e.target.value.toLowerCase()); };
+  }
 
-  // Открытие заметки по клику на карточку
-  app.querySelectorAll('[data-open]').forEach(card => card.onclick = () => openNoteEditor(card.dataset.open));
+  // Правка названия прямо в таблице (без открытия редактора)
+  app.querySelectorAll('#n-table .nt-name').forEach(inp => inp.onchange = () => {
+    const notes = getNotes();
+    const n = notes.find(x => x.id === inp.closest('[data-row]').dataset.row);
+    if (!n) return;
+    n.title = inp.value.trim(); n.updatedAt = new Date().toISOString();
+    DB.set('notes', notes);
+  });
+
+  function filterTableRows(q) {
+    app.querySelectorAll('#n-table [data-row]').forEach(tr => {
+      const txt = tr.textContent.toLowerCase();
+      tr.hidden = q && !txt.includes(q);
+    });
+  }
+
+  // Открытие заметки по клику на карточку / кнопку «Открыть»
+  app.querySelectorAll('[data-open]').forEach(card => card.onclick = () => openNote(card.dataset.open));
 
   // Удаление (останавливаем всплытие клика, чтобы не открылся редактор)
   app.querySelectorAll('[data-del]').forEach(b => b.onclick = (e) => {
@@ -83,6 +143,13 @@ function renderNotes(app) {
     DB.set('notes', getNotes().filter(n => n.id !== b.dataset.del));
     App.refresh();
   });
+}
+
+// Куда вести клик по заметке: в блок-редактор (Notion-style),
+// а если notion.js не загрузился — в старый модалочный редактор v0.5
+function openNote(id) {
+  if (window.Notion) window.Notion.openNoteBlocks(id);
+  else openNoteEditor(id);
 }
 
 // —— Отдельное окно заметки с автосохранением ————————————
@@ -191,7 +258,7 @@ function createNote() {
       closeModal();
       App.refresh();
       // Сразу открываем новую заметку для редактирования
-      openNoteEditor(note.id);
+      openNote(note.id);   // v0.6: блок-редактор (или старый, если notion.js нет)
     };
   });
 }

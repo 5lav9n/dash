@@ -86,14 +86,30 @@ function renderToday(app) {
       </div>
     </div>
 
-    <!-- Мини-игры: переводчик, географ, факты -->
-    <div class="card" id="games-widget"></div>
+    <!-- Мини-игры: переводчик, географ, факты.
+         Если файл js/modules/games.js не загрузился (например, устаревший
+         кэш на телефоне или файл не долит на GitHub), показываем подсказку,
+         а не пустую карточку -->
+    <div class="card" id="games-widget">${window.GamesModule ? '' :
+      '<h3 style="margin-bottom:10px">🎮 Игры и развитие</h3>' +
+      '<p class="page-sub">Файл <b>js/modules/games.js</b> не загрузился. ' +
+      'Проверь, что он есть в репозитории на GitHub, и обнови страницу.</p>'}</div>
+
+    <!-- v0.6: «Буст дня» — короткая мотивирующая страница (как маленькие заметки Notion).
+         Содержимое рисует js/notion.js; если файл не загрузился — карточку просто видно пустой -->
+    <div class="card boost-card" id="booster-widget" ${window.Notion ? 'hidden' : ''}></div>
   `;
 
   setupQuickNotes();
 
   // Виджет игр рисуем через games.js, если он загрузился
   if (window.GamesModule) window.GamesModule.renderGamesWidget(document.getElementById('games-widget'));
+  // Буст дня — через notion.js
+  if (window.Notion) {
+    const bw = document.getElementById('booster-widget');
+    bw.hidden = false;
+    window.Notion.renderBoosterCard(bw);
+  }
 }
 
 // —— Быстрые заметки (todo-лист) ————————————————
