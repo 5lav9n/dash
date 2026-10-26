@@ -614,8 +614,13 @@ textarea { resize: vertical; min-height: 70px; width: 100%; }
 .cal-cell.big { min-height: 108px; }
 .cal-num { font-weight: 700; }
 .cal-cell.selected { outline: 2px solid var(--accent); outline-offset: 1px; }
-.agenda-item { display: flex; gap: 10px; align-items: center; padding: 9px 4px; border-bottom: 1px dashed var(--border); }
+.agenda-item { display: flex; gap: 10px; align-items: flex-start; padding: 9px 4px; border-bottom: 1px dashed var(--border); }
 .agenda-item:last-of-type { border-bottom: none; }
+/* ⏱ Чип времени в панели дня («Расписание») — кликабельная кнопка */
+.time-chip { background: none; border: 1px solid var(--border); border-radius: 999px;
+             padding: 2px 10px; font-size: 12px; color: var(--muted); cursor: pointer;
+             transition: .15s; }
+.time-chip:hover { border-color: var(--accent); color: var(--accent); }
 .day-dot.dim { opacity: .35; }
 
 /* —— Быстрые заметки на «Сегодня» —— */
@@ -739,15 +744,330 @@ textarea { resize: vertical; min-height: 70px; width: 100%; }
 .cal-marker.event { background: var(--green); }
 
 /* ============================================================
+   v0.8 — ОСОВРЕМЕНЕННЫЙ ДИЗАЙН-СЛОЙ (поверх всего старого)
+
+   Здесь ничего не удалялось! Это «накладка»: селекторы в ней
+   чуть конкретнее старых, поэтому браузер применяет их после
+   и перекрывает прежние правила. Что изменилось визуально:
+   • новая палитра: тёплый «эйр»-фон + сочный индиго-акцент;
+   • мягкие «блобовые» градиенты вместо резких пятен;
+   • карточки с двойной рамкой-подложкой (эффект глубины),
+     ещё более округлые углы и «воздушные» многослойные тени;
+   • кнопки-«таблетки» с бликом и пружинным нажатием;
+   • стеклянная шапка/панели с сильным размытием (liquid glass);
+   • аккуратные тонкие скроллбары;
+   • анимированный градиентный текст в заголовках страниц;
+   • тёмная тема перекрашена под новую палитру.
+   Все старые классы (.card, .btn, .task-item...) сохранены,
+   так что любой будущий модуль автоматически получит новый вид.
+   ============================================================ */
+
+/* ---------- 1. Новая палитра (светлая) ---------- */
+:root {
+  --bg:          #f4f5fb;                 /* фон — холодный белый с лиловой дымкой */
+  --header:      rgba(250,250,253,.72);   /* стекло шапки — сильнее просвечивает */
+  --card:        #ffffff;
+  --soft:        #eef0f8;                 /* серо-лиловые «подложки» */
+  --accent:      #6157f5;                 /* главный акцент — «электрик индиго» */
+  --accent-2:    #9b6cff;                 /* фиолетовый для градиентов */
+  --accent-dark: #4a3fe0;
+  --text:        #171a2b;                 /* текст — глубокий чернильный */
+  --muted:       #7d8499;
+  --border:      #e4e7f2;
+
+  /* Фоновые блобы — крупные, очень мягкие, «дышащие» */
+  --bg-decor1:   rgba(97, 87, 245, .13);
+  --bg-decor2:   rgba(155, 108, 255, .11);
+  --bg-decor3:   rgba(56, 189, 248, .09);  /* добавился свежий голубой */
+
+  /* Статусы стали сочнее, но остались «пастельными подушечками» */
+  --green:  #12b76a;  --green-bg:  #dcfce9;  --green-tx:  #067647;
+  --amber:  #f79009;  --amber-bg:  #fef0c7;  --amber-tx:  #b54708;
+  --red:    #f04461;  --red-bg:    #ffe4ea;  --red-tx:    #b42318;
+  --blue:   #2e7bff;  --blue-bg:   #dbeafe;  --blue-tx:   #1849a9;
+  --violet: #7f22fe;  --violet-bg: #f0e7ff;  --violet-tx: #5925dc;
+
+  --radius: 20px;                          /* углы стали круглее */
+  /* Тени: две «прослойки» — ближняя чёткая + дальняя широкая = объём */
+  --shadow: 0 1px 1px rgba(23,26,43,.04), 0 3px 8px rgba(23,26,43,.05), 0 14px 34px rgba(97,87,245,.07);
+  --shadow-hover: 0 2px 4px rgba(23,26,43,.05), 0 10px 22px rgba(23,26,43,.07), 0 26px 56px rgba(97,87,245,.16);
+
+  /* Служебные переменные тоже освежили */
+  --panel-shadow: 0 -6px 28px rgba(23,26,43,.08);
+  --field-bg: #fafbfe;                     /* поля чуть темнее карточек — «утоплены» */
+  --btn-glow: rgba(97,87,245,.32);
+  --focus-ring: rgba(97,87,245,.16);
+  --check-border: #c9cede;
+  --task-hover-border: #c7c2ff;
+  --modal-bg: rgba(15,17,32,.38);
+
+  /* Шрифт заголовков меняем на Fraunces — «журнальный» serif,
+     сейчас такие используют Linear, Arc, Notion-клоны */
+  --font-head: 'Fraunces', 'Space Grotesk', Georgia, serif;
+}
+
+/* ---------- 2. Тёмная тема под новую палитру ---------- */
+html.dark {
+  color-scheme: dark;
+  --bg:          #07090f;                  /* почти чёрный с синевой */
+  --header:      rgba(13,16,26,.72);
+  --card:        #10131f;
+  --soft:        #171b2c;
+  --accent:      #7c74ff;
+  --accent-2:    #a78bfa;
+  --accent-dark: #6157f5;
+  --text:        #eceefb;
+  --muted:       #8a91ab;
+  --border:      #222841;
+
+  --bg-decor1:   rgba(124, 116, 255, .16);
+  --bg-decor2:   rgba(167, 139, 250, .12);
+  --bg-decor3:   rgba(56, 189, 248, .08);
+
+  --green:  #3dd68c;  --green-bg:  rgba(18,183,106,.16);  --green-tx:  #75f0b2;
+  --amber:  #fdb022;  --amber-bg:  rgba(247,144,9,.15);   --amber-tx:  #fec84b;
+  --red:    #ff6b81;  --red-bg:    rgba(240,68,97,.15);   --red-tx:    #ffa3ae;
+  --blue:   #53b0ff;  --blue-bg:   rgba(46,123,255,.16);  --blue-tx:   #a6cbff;
+  --violet: #b692ff;  --violet-bg: rgba(127,34,254,.18);  --violet-tx: #d9bbff;
+
+  --shadow: 0 1px 2px rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.5);
+  --shadow-hover: 0 2px 8px rgba(0,0,0,.55), 0 22px 54px rgba(0,0,0,.6), 0 0 0 1px rgba(124,116,255,.25);
+  --panel-shadow: 0 -10px 34px rgba(0,0,0,.55);
+  --field-bg: #0c0f19;
+  --btn-glow: rgba(124,116,255,.35);
+  --focus-ring: rgba(124,116,255,.22);
+  --check-border: #333c5e;
+  --task-hover-border: #454e7c;
+  --modal-bg: rgba(3,4,9,.66);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not(.light) {
+    color-scheme: dark;
+    --bg:#07090f; --header:rgba(13,16,26,.72); --card:#10131f; --soft:#171b2c;
+    --accent:#7c74ff; --accent-2:#a78bfa; --accent-dark:#6157f5;
+    --text:#eceefb; --muted:#8a91ab; --border:#222841;
+    --bg-decor1:rgba(124,116,255,.16); --bg-decor2:rgba(167,139,250,.12); --bg-decor3:rgba(56,189,248,.08);
+    --green:#3dd68c;  --green-bg:rgba(18,183,106,.16);  --green-tx:#75f0b2;
+    --amber:#fdb022;  --amber-bg:rgba(247,144,9,.15);   --amber-tx:#fec84b;
+    --red:#ff6b81;    --red-bg:rgba(240,68,97,.15);     --red-tx:#ffa3ae;
+    --blue:#53b0ff;   --blue-bg:rgba(46,123,255,.16);   --blue-tx:#a6cbff;
+    --violet:#b692ff; --violet-bg:rgba(127,34,254,.18); --violet-tx:#d9bbff;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.5);
+    --shadow-hover:0 2px 8px rgba(0,0,0,.55), 0 22px 54px rgba(0,0,0,.6), 0 0 0 1px rgba(124,116,255,.25);
+    --panel-shadow:0 -10px 34px rgba(0,0,0,.55);
+    --field-bg:#0c0f19; --btn-glow:rgba(124,116,255,.35); --focus-ring:rgba(124,116,255,.22);
+    --check-border:#333c5e; --task-hover-border:#454e7c; --modal-bg:rgba(3,4,9,.66);
+  }
+}
+
+/* Фон браузера под новую тёмную тему */
+@media (prefers-color-scheme: dark) { html:not(.light) { background: #07090f; } }
+html.dark { background: #07090f; }
+
+/* ---------- 3. Фон страницы: медленно «дышащие» блобы ---------- */
+body {
+  background-image:
+    radial-gradient(42% 42% at 88% -6%,  var(--bg-decor1), transparent 68%),
+    radial-gradient(46% 46% at -8% 92%,  var(--bg-decor2), transparent 68%),
+    radial-gradient(34% 34% at 58% 108%, var(--bg-decor3), transparent 68%);
+}
+/* Лёгкое движение блобов (совсем едва заметное). Отключается, если
+   человек просил «меньше движения» — правило ниже по старому коду */
+@keyframes blob-drift {
+  0%, 100% { background-position: 0% 0%, 0% 100%, 50% 100%; }
+  50%      { background-position: 8% 4%, -4% 96%, 46% 96%; }
+}
+body { animation: blob-drift 24s ease-in-out infinite; }
+
+/* ---------- 4. Тонкие современные скроллбары ---------- */
+* { scrollbar-width: thin; scrollbar-color: var(--check-border) transparent; }
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--check-border); border-radius: 999px;
+  border: 2px solid transparent; background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--accent); background-clip: content-box; }
+
+/* ---------- 5. Шапка и панели: «жидкое стекло» ---------- */
+.topbar, .sidebar {
+  backdrop-filter: blur(22px) saturate(1.6);
+  -webkit-backdrop-filter: blur(22px) saturate(1.6);
+}
+.topbar { border-bottom-color: color-mix(in srgb, var(--border) 70%, transparent); }
+
+/* Активная вкладка: плоская «пилюля» вместо тяжёлого градиента —
+   как в Figma / Linear; слева — светящаяся полоска-индикатор */
+.nav-btn.active {
+  background: color-mix(in srgb, var(--accent) 14%, var(--card));
+  color: var(--accent);
+  box-shadow: none;
+}
+.nav-btn.active::before {
+  content: ""; position: absolute; left: -12px; top: 50%; transform: translateY(-50%);
+  width: 4px; height: 22px; border-radius: 0 4px 4px 0;
+  background: linear-gradient(var(--accent), var(--accent-2));
+  box-shadow: 0 0 12px var(--btn-glow);
+}
+html.sidebar-open .nav-btn.active::before { left: -12px; }
+.nav-btn:hover { background: color-mix(in srgb, var(--accent) 8%, var(--card)); color: var(--accent); }
+
+/* Подсказки-тултипы — тёмное стекло, как в macOS */
+.nav-label {
+  background: rgba(23,26,43,.92); color: #fff;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.25); font-weight: 500; letter-spacing: .2px;
+}
+
+/* Логотип — мягче и «дороже» */
+.logo {
+  background: linear-gradient(135deg, var(--accent) 10%, var(--accent-2));
+  box-shadow: 0 6px 18px var(--btn-glow), inset 0 1px 0 rgba(255,255,255,.35);
+}
+
+/* ---------- 6. Заголовки страниц: анимированный градиент ---------- */
+.page-title {
+  font-size: clamp(22px, 3.4vw, 30px);
+  letter-spacing: -.6px;
+  background: linear-gradient(100deg, var(--text) 25%, var(--accent) 50%, var(--text) 75%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  animation: title-shine 6s linear infinite;
+}
+@keyframes title-shine { to { background-position: -250% 0; } }
+/* В Safari без background-clip прозрачный текст может исчезнуть —
+   возвращаем обычный цвет, если браузер не умеет градиентный текст */
+@supports not (background-clip: text) {
+  .page-title { -webkit-text-fill-color: var(--text); color: var(--text); background: none; animation: none; }
+}
+.page-sub { font-size: 15px; }
+
+/* ---------- 7. Карточки: двойная рамка-подложка + глубина ---------- */
+.card {
+  border-radius: var(--radius);
+  padding: 22px;
+  border-color: color-mix(in srgb, var(--border) 60%, transparent);
+  /* Подложка на 1px больше карточки по периметру — лёгкий «ореол»,
+     приём из современных дизайн-систем (Arc, Height) */
+  position: relative;
+}
+.card::after {
+  content: ""; position: absolute; inset: -1px; z-index: -1;
+  border-radius: calc(var(--radius) + 1px);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 14%, transparent), transparent 40%);
+  opacity: 0; transition: opacity .25s;
+}
+.card:hover::after { opacity: 1; }
+#app .grid .card:hover { transform: translateY(-4px); }
+.sum-card { border-radius: calc(var(--radius) - 2px); }
+.sum-value { font-size: 24px; }
+
+/* ---------- 8. Кнопки: блик сверху + пружинка ---------- */
+.btn {
+  position: relative; overflow: hidden;
+  background: linear-gradient(135deg, var(--accent) 20%, var(--accent-2));
+  box-shadow: 0 2px 6px var(--btn-glow), 0 10px 24px var(--btn-glow);
+}
+/* Блик — диагональная светлая полоса поверх градиента */
+.btn::before {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,.28) 50%, transparent 60%);
+  transform: translateX(-120%); transition: transform .5s ease;
+}
+.btn:hover::before { transform: translateX(120%); }
+.btn:hover { filter: brightness(1.04); transform: translateY(-2px); }
+.btn:active { transform: translateY(0) scale(.96); }
+.btn.secondary {
+  background: color-mix(in srgb, var(--soft) 70%, var(--card));
+  border: 1px solid var(--border);
+}
+.btn.secondary:hover { background: var(--card); box-shadow: var(--shadow); }
+.icon-btn { background: color-mix(in srgb, var(--soft) 60%, transparent); }
+.icon-btn:hover { background: var(--soft); transform: scale(1.06); }
+
+/* ---------- 9. Поля ввода: «утопленные», фокус с гало ---------- */
+input, select, textarea {
+  border-radius: 14px;
+  border-color: var(--border);
+  background: var(--field-bg);
+  transition: border-color .15s, box-shadow .2s, background .2s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--focus-ring), 0 4px 14px rgba(97,87,245,.08);
+  background: var(--card);
+}
+input::placeholder, textarea::placeholder { color: var(--muted); opacity: .65; }
+
+/* ---------- 10. Бейджи и чекбоксы ---------- */
+.badge { font-weight: 600; letter-spacing: .1px; padding: 3.5px 11px; }
+.check { border-width: 2px; }
+.check.checked {
+  background: linear-gradient(135deg, var(--green), color-mix(in srgb, var(--green) 70%, #000 8%));
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--green) 40%, transparent);
+}
+
+/* ---------- 11. Списки задач / привычек: «стеклянные» строки ---------- */
+.task-item, .habit-row {
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.task-item:hover, .habit-row:hover { transform: translateY(-2px) scale(1.004); }
+
+/* ---------- 12. Календарь: ячейки-«конфетки» ---------- */
+.cal-cell { border-radius: 16px; }
+.cal-cell.today {
+  background: linear-gradient(150deg, var(--accent), var(--accent-2));
+  box-shadow: 0 8px 22px var(--btn-glow);
+}
+.cal-event { border-radius: 8px; font-weight: 600; }
+.cw-col { border-radius: 16px; background: color-mix(in srgb, var(--soft) 60%, var(--card)); }
+.cw-dayhead.today { background: linear-gradient(150deg, var(--accent), var(--accent-2)); box-shadow: 0 6px 16px var(--btn-glow); }
+
+/* ---------- 13. Канбан: колонки с цветными «шапками» статусов ---------- */
+.kb-col { border-radius: 18px; background: color-mix(in srgb, var(--soft) 70%, var(--card)); padding: 14px; }
+.kb-col:nth-child(1) h4 { color: var(--muted); }
+.kb-col:nth-child(2) h4 { color: var(--amber-tx); }
+.kb-col:nth-child(3) h4 { color: var(--green-tx); }
+.kb-card { border-radius: 14px; border-left: 3px solid color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.kb-card:hover { transform: translateY(-2px); }
+
+/* ---------- 14. Сегментированный переключатель (Месяц/Неделя…) ---------- */
+.seg { background: color-mix(in srgb, var(--soft) 70%, var(--card)); border: 1px solid var(--border); border-radius: 16px; }
+.seg-btn { border-radius: 12px; }
+.seg-btn.active { box-shadow: 0 2px 10px rgba(23,26,43,.10); }
+.task-view-switch button.on { box-shadow: 0 2px 8px rgba(23,26,43,.10); }
+
+/* ---------- 15. Модалки: крупнее угол + глубже тень ---------- */
+.modal { border-radius: calc(var(--radius) + 4px); box-shadow: var(--shadow-hover); }
+.qf-box { border-radius: calc(var(--radius) + 4px); }
+.qf-chip { border-radius: 12px; background: color-mix(in srgb, var(--soft) 60%, var(--card)); }
+.qf-chip:hover { background: var(--card); box-shadow: var(--shadow); transform: translateY(-1px); }
+
+/* ---------- 16. Прочее: прогресс-бар, игры, быстрые заметки ---------- */
+.progress > div { background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--blue)); background-size: 200% 100%; animation: bar-flow 3s linear infinite; }
+@keyframes bar-flow { to { background-position: -200% 0; } }
+.game-card { border-radius: 16px; background: color-mix(in srgb, var(--soft) 65%, var(--card)); border: 1px solid var(--border); }
+.answer.right { background: linear-gradient(135deg, var(--green), color-mix(in srgb, var(--green) 75%, #000)); }
+.quick-card { border-left-color: var(--accent); }
+.nb-callout { background: color-mix(in srgb, var(--amber-bg) 80%, var(--card)); border: 1px solid color-mix(in srgb, var(--amber) 25%, transparent); }
+.day-dot.on { background: linear-gradient(150deg, var(--green), color-mix(in srgb, var(--green) 75%, #000)); box-shadow: 0 4px 12px color-mix(in srgb, var(--green) 40%, transparent); }
+
+/* ============================================================
    v0.7 — календарь: переключатель «Месяц/Неделя» и недельная сетка
    ============================================================ */
 
-/* Переключатель режимов (сегментированный контрол, как в iOS/Notion) */
-.seg { display: inline-flex; background: var(--soft); border-radius: 14px; padding: 4px; gap: 4px; margin-bottom: 14px; }
-.seg-btn { border: none; background: transparent; padding: 8px 18px; border-radius: 11px;
+/* Переключатель режимов (сегментированный контрол, как в iOS/Notion).
+   Примечание v0.8: фон/скругления/тень активного элемента донастраивает
+   секция «v0.8» выше — здесь остаются только размеры и отступы */
+.seg { display: inline-flex; background: var(--soft); border-radius: 16px; padding: 4px; gap: 4px; margin-bottom: 14px; }
+.seg-btn { border: none; background: transparent; padding: 8px 18px; border-radius: 12px;
   font: inherit; font-weight: 600; font-size: 14px; color: var(--muted); cursor: pointer; transition: all .2s; }
 .seg-btn:hover { color: var(--text); }
-.seg-btn.active { background: var(--card); color: var(--accent); box-shadow: 0 2px 8px rgba(20,20,50,.10); }
+.seg-btn.active { background: var(--card); color: var(--accent); }
 
 /* Небольшое поле времени в панелях */
 .small-input { padding: 8px 10px; font-size: 13px; flex: 0 0 auto; width: auto; }
@@ -758,14 +1078,14 @@ textarea { resize: vertical; min-height: 70px; width: 100%; }
 .wg-head-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7px; margin-bottom: 7px; }
 .wg-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7px; margin-bottom: 7px; }
 .cw-dayhead { text-align: center; padding: 6px 0; border-radius: 12px; }
-.cw-dayhead.today { background: linear-gradient(135deg, var(--accent), #8b5cf6); color: #fff; }
+.cw-dayhead.today { background: linear-gradient(150deg, var(--accent), var(--accent-2)); color: #fff; }
 .cw-dow { font-size: 11.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 .cw-dayhead.today .cw-dow { color: rgba(255,255,255,.85); }
 .cw-num { font-size: 19px; font-weight: 800; }
 .cw-col { min-height: 130px; background: var(--soft); border-radius: 14px; padding: 7px;
   border: 1.5px solid transparent; cursor: pointer; transition: border-color .2s, box-shadow .2s; }
 .cw-col:hover { border-color: var(--accent); box-shadow: var(--shadow); }
-.cw-col.today { background: var(--accent-bg, rgba(91,91,214,.07)); border-color: rgba(91,91,214,.25); }
+.cw-col.today { background: color-mix(in srgb, var(--accent) 7%, var(--card)); border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
 .cw-empty { color: var(--muted); opacity: .45; text-align: center; margin-top: 34px; font-size: 22px; }
 
 /* Время внутри карточки события */
