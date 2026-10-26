@@ -90,7 +90,8 @@ function renderTaskForm() {
           `<option value="${v}" ${ (task?.priority || 'mid') === v ? 'selected' : ''}>${l}</option>`).join('')}
       </select>
       <input id="f-due" type="date" value="${task?.dueDate || ''}" title="Срок выполнения">
-      <input id="f-time" type="time" value="${task?.dueTime || ''}" title="Время (необязательно)" style="flex:0 0 140px">
+      <input id="f-time" type="time" value="${task?.dueTime || ''}" title="Начало (необязательно)" style="flex:0 0 130px">
+      <input id="f-time-end" type="time" value="${task?.endTime || ''}" title="Конец промежутка (необязательно)" style="flex:0 0 130px">
       <select id="f-status">
         ${Object.entries(STATUS_LABEL).map(([v, l]) =>
           `<option value="${v}" ${ (task?.status || 'todo') === v ? 'selected' : ''}>${l}</option>`).join('')}
@@ -128,6 +129,7 @@ function renderTaskForm() {
       priority: document.getElementById('f-prio').value,
       dueDate:  document.getElementById('f-due').value,
       dueTime:  document.getElementById('f-time').value,
+      endTime:  document.getElementById('f-time-end').value,
       status:   document.getElementById('f-status').value,
       inCalendar: document.getElementById('f-cal').checked,
       subtasks,
@@ -211,7 +213,7 @@ function renderTaskList() {
           <div class="task-meta">
             <span class="badge cat">${esc(t.category)}</span>
             <span class="badge ${badgeCls}">${badgeTxt}</span>
-            ${t.dueDate ? ` · 📅 ${prettyDate(t.dueDate)}${t.dueTime ? ' 🕠' + t.dueTime : ''}` : ''}
+            ${t.dueDate ? ` · 📅 ${prettyDate(t.dueDate)}${t.dueTime ? ' 🕠' + t.dueTime + (t.endTime ? '–' + t.endTime : '') : ''}` : ''}
             ${subs.length ? ` · <span class="expand-hint" data-open="${t.id}">☑ ${doneSubs}/${subs.length} шагов</span>` : ''}
             ${(t.comments || []).length ? ` · 💬 ${t.comments.length}` : ''}
             ${spent ? ` · <span class="expand-hint" data-open="${t.id}">💸 ${money(spent)}</span>` : ''}

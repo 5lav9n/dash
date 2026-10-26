@@ -75,7 +75,9 @@ function renderAgendaPanel() {
   const panel = document.getElementById('ag-panel');
   if (!panel) return;
   const date = agSelected;
-  const events = window.CalendarModule.getAllEvents().filter(e => e.date === date);
+  const CM = window.CalendarModule;
+  // События дня, отсортированные по времени начала (без времени — в конце)
+  const events = CM.sortDayEvents(CM.getAllEvents().filter(e => e.date === date));
 
   // Привязанные расходы из финансов (у операций есть поле taskId, а у задач — dueDate)
   const tasksOnDay = (window.TasksModule?.getTasks() || []).filter(t => t.dueDate === date);
@@ -95,11 +97,19 @@ function renderAgendaPanel() {
         const task = e.type === 'task' ? tasksOnDay.find(t => t.title === e.title) : null;
         const subs = task?.subtasks || [];
         const doneSubs = subs.filter(s => s.done).length;
+        // Строка времени: «🕠 14:00–15:30» или «целый день», если времени нет
+        const timeLabel = e.time ? `🕠 ${CM.fmtTimeRange(e)}` : '⏳ целый день';
         return `
         <div class="agenda-item">
           <span class="dot" style="background:${EVENT_COLORS[e.type]}"></span>
           <div style="flex:1">
             <div>${esc(e.title)} <span class="badge">${{task:'Задача',plan:'Финплан',subscr:'Подписка',event:'Событие'}[e.type]}</span></div>
+            <div class="task-meta">
+              <!-- Кнопка-редактор промежутка времени для задач и финпланов -->
+              <button class="time-chip" data-time-ev="${esc(e.title)}" title="Изменить время">
+                ⏱ ${timeLabel}
+              </button>
+            </div>
             ${subs.length ? `<div class="task-meta">☑ подзадачи: ${doneSubs}/${subs.length}</div>` : ''}
             ${(task?.comments || []).length ? `<div class="task-meta">💬 комментариев: ${task.comments.length}</div>` : ''}
           </div>
@@ -107,9 +117,11 @@ function renderAgendaPanel() {
         </div>`;
       }).join('') : '<p class="page-sub" style="margin:8px 0">На этот день ничего нет 🌿</p>'}
 
-      <!-- Быстрый ввод прямо в день -->
+      <!-- Быстрый ввод прямо в день: название + промежуток времени -->
       <div class="form-row" style="margin-top:14px">
         <input id="ag-title" placeholder="Добавить на ${prettyDate(date)}...">
+        <input id="ag-start" type="time" title="Начало (необязательно)" style="flex:0 0 125px">
+        <input id="ag-end" type="time" title="Конец (необязательно)" style="flex:0 0 125px">
         <select id="ag-type" style="flex:0 0 200px">
           <option value="task">✅ Задача на этот день</option>
           <option value="plan">💰 Финансовый план</option>
@@ -122,20 +134,45 @@ function renderAgendaPanel() {
   // Переход к задаче: открываем страницу задач (подробности раскроются там же)
   panel.querySelectorAll('[data-goto-task]').forEach(b => b.onclick = () => showPage('tasks'));
 
+  // Клик по «⏱ чипу» времени → маленькое окно с началом и концом промежутка
+  panel.querySelectorAll('[data-time-ev]').forEach(chip => chip.onclick = () => {
+    const title = chip.dataset.timeEv;
+    const ev = events.find(e => e.title === title);
+    if (!ev || (ev.type !== 'task' && ev.type !== 'plan')) return; // подписки/повторы — без времени
+
+    openModal('⏱ Время', `
+      <p class="page-sub" style="margin-top:-6px">${esc(ev.title)} · ${prettyDate(date)}</p>
+      <div class="form-row">
+        <label style="flex:1"><small>Начало</small>
+          <input id="tm-start" type="time" value="${ev.time || ''}"></label>
+        <label style="flex:1"><small>Конец</small>
+          <input id="tm-end" type="time" value="${ev.end || ''}"></label>
+      </div>
+      <p class="page-sub">Оставь поля пустыми, чтобы событие было «весь день».</p>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn" id="tm-save">Сохранить</button>
+        <button class="btn secondary" id="tm-clear">Весь день</button>
+      </div>
+    `);
+
+    const save = (start, end) => {
+      CM.setEventTime(date, ev, start, end); // пишем dueTime/endTime в задачу или goal.time
+      closeModal();
+      App.refresh();
+    };
+    document.getElementById('tm-save').onclick = () =>
+      save(document.getElementById('tm-start').value, document.getElementById('tm-end').value);
+    document.getElementById('tm-clear').onclick = () => save('', '');
+  });
+
   document.getElementById('ag-add').onclick = () => {
     const title = document.getElementById('ag-title').value.trim();
     if (!title) return;
     const type = document.getElementById('ag-type').value;
-    if (type === 'task') {
-      const tasks = DB.get('tasks', []);
-      tasks.push({ id: uid(), title, category: 'Личное', priority: 'mid',
-                   status: 'todo', dueDate: date, inCalendar: true, subtasks: [], comments: [] });
-      DB.set('tasks', tasks);
-    } else {
-      const goals = DB.get('goals', []);
-      goals.push({ id: uid(), title, targetSum: 0, saved: 0, targetDate: date, goalType: 'custom' });
-      DB.set('goals', goals);
-    }
+    const start = document.getElementById('ag-start').value; // '14:00' или ''
+    const end   = document.getElementById('ag-end').value;   // '16:00' или ''
+    // Общим способом из calendar.js: создаёт задачу/план сразу с промежутком
+    CM.addEventToDay(date, type, title, start, end);
     App.refresh();
   };
 }

@@ -43,17 +43,20 @@ function getAllEvents(monthY, monthM) {
   const m = monthM ?? calDate.getMonth();
   const events = [];
 
-  // 1) Задачи, помеченные «показывать в календаре» (+ время, если задано)
+  // 1) Задачи, помеченные «показывать в календаре»
+  //    (+ время начала dueTime и конца endTime — промежуток, если задан)
   (window.TasksModule?.getTasks() || []).forEach(t => {
     if (t.inCalendar && t.dueDate)
-      events.push({ date: t.dueDate, time: t.dueTime || '', title: t.title,
-                    type: 'task', done: t.status === 'done', taskId: t.id });
+      events.push({ date: t.dueDate, time: t.dueTime || '', end: t.endTime || '',
+                    title: t.title, type: 'task', done: t.status === 'done', taskId: t.id });
   });
 
-  // 2) Финансовые планы (цели) — дата targetDate
+  // 2) Финансовые планы (цели) — дата targetDate (+ время, если пользователь задал).
+  //    time = начало промежутка, endTime = конец. goalType='custom' — просто событие.
   DB.get('goals', []).forEach(g => {
-    if (g.targetDate && g.goalType !== 'custom')
-      events.push({ date: g.targetDate, title: '💰 ' + g.title, type: 'plan' });
+    if (g.targetDate)
+      events.push({ date: g.targetDate, title: '💰 ' + g.title, type: 'plan',
+                    time: g.time || '', end: g.endTime || '' });
   });
 
   // 3) Подписки — день списания повторяется каждый месяц
@@ -91,10 +94,62 @@ function getAllEvents(monthY, monthM) {
 function calEventHtml(e, maxTitle = 0) {
   let title = esc(e.title);
   if (maxTitle && title.length > maxTitle) title = title.slice(0, maxTitle) + '…';
-  const time = e.time ? `<span class="ce-time">🕠${e.time}</span> ` : '';
+  // Время: показываем промежуток «14:00–15:30», если задан конец, иначе только начало
+  const time = e.time ? `<span class="ce-time">🕠${e.time}${e.end ? '–' + e.end : ''}</span> ` : '';
   return `<div class="cal-event" data-cal-ev="${e.type}" style="background:${EVENT_COLORS[e.type]}22; color:${EVENT_COLORS[e.type]}; border-left:3px solid ${EVENT_COLORS[e.type]}">
     ${time}${e.done ? '✓ ' : ''}${title}
   </div>`;
+}
+
+// —— Вспомогательные функции для «Расписания» (agenda.js) ————
+
+// Красивый текст времени: '14:30' → '14:30', промежуток → '14:00–15:30'
+function fmtTimeRange(e) {
+  if (!e.time) return '';
+  return e.end ? `${e.time}–${e.end}` : e.time;
+}
+
+// Сортировка событий внутри дня: timed-события по началу, без времени — в конец
+function sortDayEvents(list) {
+  return [...list].sort((a, b) => {
+    if (!a.time && !b.time) return a.title.localeCompare(b.title, 'ru');
+    if (!a.time) return 1;   // без времени — ниже тех, у которых оно есть
+    if (!b.time) return -1;
+    return a.time < b.time ? -1 : 1;
+  });
+}
+
+// Быстрое добавление задачи/плана на день (используют agenda.js и календарь).
+// time — начало ('14:00' или ''), end — конец промежутка ('16:00' или '')
+function addEventToDay(date, type, title, time = '', end = '') {
+  if (type === 'task') {
+    const tasks = DB.get('tasks', []);
+    tasks.push({ id: uid(), title, category: 'Личное', priority: 'mid',
+                 status: 'todo', dueDate: date, dueTime: time, endTime: end,
+                 inCalendar: true, subtasks: [], comments: [] });
+    DB.set('tasks', tasks);
+  } else {
+    // Финансовый план: goalType='custom' — просто событие в календаре
+    const goals = DB.get('goals', []);
+    goals.push({ id: uid(), title, targetSum: 0, saved: 0, targetDate: date,
+                 goalType: 'custom', time, endTime: end });
+    DB.set('goals', goals);
+  }
+}
+
+// Сохранение editedTask через TasksModule недоступно извне, поэтому
+// agenda.js меняет время напрямую в массиве tasks/goals этим способом:
+function setEventTime(date, ev, time, end) {
+  if (ev.type === 'task' && ev.taskId) {
+    const tasks = DB.get('tasks', []);
+    const t = tasks.find(x => x.id === ev.taskId);
+    if (t) { t.dueTime = time; t.endTime = end; DB.set('tasks', tasks); }
+  } else if (ev.type === 'plan') {
+    const goals = DB.get('goals', []);
+    // Ищем цель по названию (в заголовке есть префикс '💰 ') и дате
+    const g = goals.find(x => x.targetDate === date && ('💰 ' + x.title) === ev.title);
+    if (g) { g.time = time; g.endTime = end; DB.set('goals', goals); }
+  }
 }
 
 // Обёртка страницы: переключатель «Месяц / Неделя» + нужный вид
@@ -309,9 +364,15 @@ function renderDayPanel(date) {
     App.refresh(); // перерисовываем календарь
   };
 
-  // Аккуратно прокручиваем к панели, если она ниже экрана
-  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  // Аккуратно прокручиваем к панели, если она ниже экрана.
+  // Проверка typeof нужен: в тестовой среде jsdom этого метода нет,
+  // а в реальном браузере он есть и работает как задумано
+  if (typeof panel.scrollIntoView === 'function') {
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
 }
 
 registerPage('calendar', renderCalendar);
-window.CalendarModule = { getAllEvents, EVENT_COLORS, registerCalSource };
+// Экспортируем функции наружу — ими пользуется agenda.js («Расписание»)
+window.CalendarModule = { getAllEvents, EVENT_COLORS, registerCalSource,
+                          fmtTimeRange, sortDayEvents, addEventToDay, setEventTime };
