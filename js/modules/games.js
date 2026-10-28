@@ -49,6 +49,13 @@ const FACTS = [
 // Случайный элемент массива
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
+// Экранирование текста перед вставкой в HTML (защита от «сломанной» вёрстки).
+// esc обычно живёт в utils.js, но дублируем её здесь на всякий случай —
+// теперь games.js работает сам по себе, даже если utils.js не загрузился.
+const gesc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({
+  '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+}[c]));
+
 // Смешать 4 варианта, правильный — помечаем
 function makeOptions(correct, all, selfKey) {
   const wrongs = [];
@@ -56,7 +63,15 @@ function makeOptions(correct, all, selfKey) {
     const w = pick(all);
     if (w[selfKey] !== correct[selfKey] && !wrongs.includes(w)) wrongs.push(w);
   }
-  return shuffle([correct, ...wrongs]); // перемешиваем порядок
+  // Перемешиваем порядок. shuffle живёт в utils.js; делаем «запасной вариант»
+  // на случай, если utils.js не загрузился — тогда игра всё равно работает.
+  const opts = [correct, ...wrongs];
+  if (typeof shuffle === 'function') return shuffle(opts);
+  for (let i = opts.length - 1; i > 0; i--) {          // простой аналог: переставляем элементы местами
+    const j = Math.floor(Math.random() * (i + 1));
+    [opts[i], opts[j]] = [opts[j], opts[i]];
+  }
+  return opts;
 }
 
 // Текущее состояние игр (переменные живут внутри модуля)
@@ -71,10 +86,10 @@ function newWordRound() {
                             WORDS.map(w => ({ en: w[0], ru: w[1] })), 'ru');
   document.getElementById('game-word').innerHTML = `
     <div class="q-box">
-      <div class="q-big">${esc(curWord[0])}</div>
+      <div class="q-big">${gesc(curWord[0])}</div>
       <div class="q-sub">Что это значит?</div>
       <div class="answers">
-        ${opts.map(o => `<button class="btn answer" data-a="${esc(o.ru)}">${esc(o.ru)}</button>`).join('')}
+        ${opts.map(o => `<button class="btn answer" data-a="${gesc(o.ru)}">${gesc(o.ru)}</button>`).join('')}
       </div>
       <div class="score-line">🏆 Очки: <b id="ws-${Date.now()}">${wordScore}</b></div>
     </div>`;
@@ -94,10 +109,10 @@ function newCapRound() {
                             CAPITALS.map(x => ({ c: x[0], s: x[1] })), 's');
   document.getElementById('game-cap').innerHTML = `
     <div class="q-box">
-      <div class="q-big">🌍 ${esc(curCap[0])}</div>
+      <div class="q-big">🌍 ${gesc(curCap[0])}</div>
       <div class="q-sub">Столица этой страны?</div>
       <div class="answers">
-        ${opts.map(o => `<button class="btn answer" data-a="${esc(o.s)}">${esc(o.s)}</button>`).join('')}
+        ${opts.map(o => `<button class="btn answer" data-a="${gesc(o.s)}">${gesc(o.s)}</button>`).join('')}
       </div>
       <div class="score-line">🏆 Очки: <b>${capScore}</b></div>
     </div>`;

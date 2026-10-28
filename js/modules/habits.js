@@ -163,7 +163,7 @@ function editHabit(id, kind) {
       if (isEvent) {
         data.repeat = wrap.querySelector('#hb-repeat').value;
         data.day = Number(wrap.querySelector('#hb-day').value) || 1;
-        data.time = wrap.querySelector('#hb-time').value; // '14:30' или
+        data.time = wrap.querySelector('#hb-time').value; // '14:30' или 
       }
       if (h) { h.name = name; Object.assign(h, data); }
       else {
