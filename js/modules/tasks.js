@@ -25,6 +25,10 @@ function taskSpent(taskId) {
 // Текущие значения фильтров (живут внутри модуля)
 let filters = { status: 'all', category: 'all', sort: 'due' };
 
+// Активная вкладка страницы: 'active' — текущие задачи, 'done' — архив
+// Завершённые больше не смешиваются с обычным списком.
+let tasksTab = 'active';
+
 function getTasks()  { return DB.get('tasks', []); }
 function saveTasks(t){
   DB.set('tasks', t);
@@ -47,6 +51,11 @@ function renderTasks(app) {
       </div>` : ''}
     </div>
     <p class="page-sub">Всего: ${tasks.length} · Выполнено: ${tasks.filter(t => t.status === 'done').length}${taskView === 'board' ? ' · перетаскивай карточки между колонками 🖱' : ''}</p>
+    <!-- Вкладки: активные задачи / архив выполненных -->
+    <div class="tabs" id="task-tabs">
+      <button data-tab="active" class="${tasksTab === 'active' ? 'on' : ''}">🔥 Активные (${tasks.filter(t => t.status !== 'done').length})</button>
+      <button data-tab="done"   class="${tasksTab === 'done'   ? 'on' : ''}">✓ Завершённые (${tasks.filter(t => t.status === 'done').length})</button>
+    </div>
     <div id="task-form" class="card"></div>
     <div class="filters" id="task-filters"></div>
     <div id="task-list"></div>
@@ -57,9 +66,18 @@ function renderTasks(app) {
     taskView = b.dataset.view; App.refresh();
   });
 
+  // Кнопки вкладок «Активные / Завершённые»
+  app.querySelectorAll('#task-tabs [data-tab]').forEach(b => b.onclick = () => {
+    tasksTab = b.dataset.tab;
+    // Перекрашиваем вкладки и перерисовываем список без полной перезагрузки страницы
+    app.querySelectorAll('#task-tabs [data-tab]').forEach(x => x.classList.toggle('on', x === b));
+    renderTaskList();
+  });
+
   // В режиме доски список заменяем канбаном, фильтры прячем
   if (taskView === 'board' && window.Notion) {
     document.getElementById('task-filters').hidden = true;
+    document.getElementById('task-tabs').hidden = true; // доска и так показывает статусы колонками
     window.Notion.renderKanban(document.getElementById('task-list'));
     renderTaskForm();
     return;
@@ -154,10 +172,17 @@ function renderTaskForm() {
 // —— Фильтры ————————————————————————————————
 function renderFilters() {
   const box = document.getElementById('task-filters');
-  box.innerHTML = `
+  // На вкладке «Завершённые» фильтр по статусу и сортировка не нужны —
+  // там и так только выполненные задачи.
+  box.innerHTML = tasksTab === 'done' ? `
+    <select id="fl-cat">
+      <option value="all">Все категории</option>
+      ${TASK_CATEGORIES.map(c => `<option ${filters.category===c?'selected':''}>${c}</option>`).join('')}
+    </select>
+  ` : `
     <select id="fl-status">
       <option value="all">Все статусы</option>
-      ${Object.entries(STATUS_LABEL).map(([v,l]) => `<option value="${v}" ${filters.status===v?'selected':''}>${l}</option>`).join('')}
+      ${Object.entries(STATUS_LABEL).filter(([v]) => v !== 'done').map(([v,l]) => `<option value="${v}" ${filters.status===v?'selected':''}>${l}</option>`).join('')}
     </select>
     <select id="fl-cat">
       <option value="all">Все категории</option>
@@ -168,9 +193,11 @@ function renderFilters() {
       <option value="prio" ${filters.sort==='prio'?'selected':''}>По приоритету</option>
     </select>
   `;
-  box.querySelector('#fl-status').onchange = e => { filters.status = e.target.value; renderTaskList(); };
+  const flStatus = box.querySelector('#fl-status');
+  if (flStatus) flStatus.onchange = e => { filters.status = e.target.value; renderTaskList(); };
   box.querySelector('#fl-cat').onchange    = e => { filters.category = e.target.value; renderTaskList(); };
-  box.querySelector('#fl-sort').onchange   = e => { filters.sort = e.target.value; renderTaskList(); };
+  const flSort = box.querySelector('#fl-sort');
+  if (flSort) flSort.onchange   = e => { filters.sort = e.target.value; renderTaskList(); };
 }
 
 // —— Список задач ————————————————————————————
@@ -178,20 +205,30 @@ function renderTaskList() {
   const today = todayStr();
   let tasks = getTasks();
 
-  // Применяем фильтры: .filter оставляет только подходящие элементы
-  if (filters.status !== 'all')   tasks = tasks.filter(t => t.status === filters.status);
+  // Сначала разделяем по вкладкам: активные (не завершённые) / архив
+  if (tasksTab === 'done') {
+    tasks = tasks.filter(t => t.status === 'done');
+  } else {
+    tasks = tasks.filter(t => t.status !== 'done');
+    if (filters.status !== 'all') tasks = tasks.filter(t => t.status === filters.status);
+  }
   if (filters.category !== 'all') tasks = tasks.filter(t => t.category === filters.category);
 
-  // Сортировка
+  // Сортировка (в архиве — свежие завершения сверху)
   const prioWeight = { high: 0, mid: 1, low: 2 };
-  if (filters.sort === 'due') {
+  if (tasksTab === 'done') {
+    tasks.sort((a, b) => ((b.doneDate || '') < (a.doneDate || '')) ? -1 : 1);
+  } else if (filters.sort === 'due') {
     tasks.sort((a, b) => (a.dueDate || '9999') < (b.dueDate || '9999') ? -1 : 1);
   } else {
     tasks.sort((a, b) => prioWeight[a.priority] - prioWeight[b.priority]);
   }
 
   const list = document.getElementById('task-list');
-  if (!tasks.length) { list.innerHTML = empty('Задач нет — можно отдохнуть 🌤️'); return; }
+  if (!tasks.length) {
+    list.innerHTML = empty(tasksTab === 'done' ? 'Пока нечего показать в архиве 📭' : 'Задач нет — можно отдохнуть 🌤️');
+    return;
+  }
 
   list.innerHTML = tasks.map(t => {
     // Просрочено = есть дата в прошлом и задача не сделана
@@ -212,7 +249,9 @@ function renderTaskList() {
           <div class="task-title"><span class="dot" style="background:${PRIO_DOT[t.priority]}"></span>${esc(t.title)}</div>
           <div class="task-meta">
             <span class="badge cat">${esc(t.category)}</span>
-            <span class="badge ${badgeCls}">${badgeTxt}</span>
+            ${tasksTab === 'done'
+              ? `<span class="badge done">✓ Выполнено${t.doneDate ? ' · ' + prettyDate(t.doneDate) : ''}</span>`
+              : `<span class="badge ${badgeCls}">${badgeTxt}</span>`}
             ${t.dueDate ? ` · 📅 ${prettyDate(t.dueDate)}${t.dueTime ? ' 🕠' + t.dueTime + (t.endTime ? '–' + t.endTime : '') : ''}` : ''}
             ${subs.length ? ` · <span class="expand-hint" data-open="${t.id}">☑ ${doneSubs}/${subs.length} шагов</span>` : ''}
             ${(t.comments || []).length ? ` · 💬 ${t.comments.length}` : ''}
@@ -353,12 +392,19 @@ function renderTaskDetails(id) {
   };
 }
 
-// Клик по кружку:/todo <-> done (progress — через форму)
+// Клик по кружку: todo <-> done (progress — через форму)
 function toggleStatus(id) {
   const tasks = getTasks();
   const t = tasks.find(t => t.id === id);
   if (!t) return;
-  t.status = t.status === 'done' ? 'todo' : 'done';
+  if (t.status === 'done') {
+    // Снимаем отметку — задача возвращается во вкладку «Активные»
+    t.status = 'todo';
+    delete t.doneDate;
+  } else {
+    t.status = 'done';
+    t.doneDate = todayStr(); // запоминаем день завершения для архива
+  }
   saveTasks(tasks);
 }
 
