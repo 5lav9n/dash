@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Мой дашборд</title>
   <!-- Цвет системной панели телефона в тон сайту (приятно на iPhone) -->
-  <meta name="theme-color" content="#f7f8fa">
+  <meta name="theme-color" content="#ffffff">
 
   <!-- ===== PWA: чтобы сайт можно было «установить» на iPhone как приложение =====
        manifest — файл-«визитка» приложения (название, иконки, цвет фона) -->
@@ -24,7 +24,8 @@
        Inter — спокойный и очень читаемый для основного текста -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <!-- v1.0 (Apple-стиль): Inter — единственная «рабочая» пара SF Pro на вебе -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <!-- Наши стили -->
   <link rel="stylesheet" href="css/style.css">
@@ -38,8 +39,9 @@
       <div class="nav-section">Планирование</div>
       <button class="nav-btn active" data-page="today"   title="Сегодня"><i data-lucide="sun-medium"></i><span class="nav-label">Сегодня</span></button>
       <button class="nav-btn" data-page="tasks"    title="Задачи"><i data-lucide="check-square"></i><span class="nav-label">Задачи</span></button>
-      <button class="nav-btn" data-page="calendar" title="Календарь"><i data-lucide="calendar-days"></i><span class="nav-label">Календарь</span></button>
-      <button class="nav-btn" data-page="agenda" title="Расписание на день"><i data-lucide="list-checks"></i><span class="nav-label">Расписание</span></button>
+      <!-- v1.0: страница «Календарь» убрана (дублировала «Расписание»),
+           ссылка calendar в адресной строке автоматически ведёт на agenda -->
+      <button class="nav-btn" data-page="agenda" title="Календарь и расписание"><i data-lucide="calendar-days"></i><span class="nav-label">Расписание</span></button>
       <div class="nav-section">Мысли</div>
       <button class="nav-btn" data-page="notes"    title="Заметки"><i data-lucide="pen-line"></i><span class="nav-label">Заметки</span></button>
       <button class="nav-btn" data-page="habits"   title="Привычки"><i data-lucide="flame"></i><span class="nav-label">Привычки</span></button>
