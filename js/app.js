@@ -16,34 +16,22 @@ var pages = {}; // сюда модули записывают свои функ�
 // Красивые названия разделов и сегодняшняя дата для шапки сверху.
 // Обновляем их каждый раз, когда показываем новую страницу.
 const PAGE_TITLES = {
-  today: "Сегодня",
-  tasks: "Задачи",
-  agenda: "Расписание",
-  notes: "Заметки",
-  habits: "Привычки",
-  finance: "Финансы",
-  wishlist: "Вишлист",
-  media: "Медиатека",
+  today: 'Сегодня', tasks: 'Задачи', calendar: 'Расписание', agenda: 'Расписание',
+  notes: 'Заметки', habits: 'Привычки', finance: 'Финансы', wishlist: 'Вишлист', media: 'Медиатека'
 };
 function updateTopbar(name) {
-  const h = document.getElementById("topbar-heading");
-  const d = document.getElementById("topbar-date");
-  if (h) h.textContent = PAGE_TITLES[name] || "Мой дашборд";
-  if (d)
-    d.textContent = new Intl.DateTimeFormat("ru-RU", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-    }).format(new Date());
+  const h = document.getElementById('topbar-heading');
+  const d = document.getElementById('topbar-date');
+  if (h) h.textContent = PAGE_TITLES[name] || 'Мой дашборд';
+  if (d) d.textContent = new Intl.DateTimeFormat('ru-RU',
+    { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
 }
 
 // Объект приложения. Модули вызывают App.refresh() после изменений,
 // чтобы перерисовать текущую страницу.
 const App = {
   currentPage: null,
-  refresh() {
-    showPage(this.currentPage);
-  },
+  refresh() { showPage(this.currentPage); }
 };
 
 function registerPage(name, renderFn) {
@@ -52,20 +40,20 @@ function registerPage(name, renderFn) {
 
 // Показать страницу по имени (например, "tasks")
 function showPage(name) {
-  if (!pages[name]) name = "today"; // защита от опечатки в адресе
+  // v1.0: страница «Календарь» убрана как дубль «Расписания» —
+  // старые ссылки #calendar (в адресной строке, в закладках) ведут на agenda
+  if (name === 'calendar') name = 'agenda';
+  if (!pages[name]) name = 'today'; // защита от опечатки в адресе
   App.currentPage = name;
-  const app = document.getElementById("app");
-  app.innerHTML = ""; // очистили старую страницу
-  if (pages[name]) pages[name](app); // модуль нарисовал новую
+  const app = document.getElementById('app');
+  app.innerHTML = '';                      // очистили старую страницу
+  if (pages[name]) pages[name](app);       // модуль нарисовал новую
 
   // Подсветка активной кнопки в меню + обновление шапки сверху.
   // (пишем через classList, а не через className — так безопаснее:
   //  если внутри есть SVG-иконки, className у них работает иначе)
-  document
-    .querySelectorAll(".nav-btn")
-    .forEach((btn) =>
-      btn.classList.toggle("active", btn.dataset.page === name),
-    );
+  document.querySelectorAll('.nav-btn').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.page === name));
   updateTopbar(name);
 
   // Перерисовываем линейные иконки Lucide, которые появились внутри модулей.
@@ -74,31 +62,28 @@ function showPage(name) {
 
   // Запоминаем открытую страницу в адресной строке (#tasks).
   // При следующем открытии сайта вернёмся на ту же вкладку.
-  history.replaceState(null, "", "#" + name);
+  history.replaceState(null, '', '#' + name);
 }
 
 // Навешиваем клики на кнопки меню (делаем один раз при загрузке)
-document.querySelectorAll(".nav-btn").forEach((btn) => {
-  btn.addEventListener("click", () => showPage(btn.dataset.page));
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => showPage(btn.dataset.page));
 });
 
 // Кнопка «Резервная копия» в шапке делает то же самое, что пункт в левом меню
-const exportTop = document.getElementById("export-btn-top");
-if (exportTop)
-  exportTop.addEventListener("click", () =>
-    document.getElementById("export-btn").click(),
-  );
+const exportTop = document.getElementById('export-btn-top');
+if (exportTop) exportTop.addEventListener('click', () =>
+  document.getElementById('export-btn').click());
 
 /* ===== v0.6: «нотионовские» элементы оболочки ===== */
 
 // Кнопка «＋» в шапке — быстрое создание (функция из js/notion.js)
-const quickBtn = document.getElementById("quick-create-btn");
-if (quickBtn)
-  quickBtn.addEventListener("click", () => window.Notion?.openQuickCreate());
+const quickBtn = document.getElementById('quick-create-btn');
+if (quickBtn) quickBtn.addEventListener('click', () => window.Notion?.openQuickCreate());
 
 // Ctrl+K (на Mac — Cmd+K) открывает быстрое создание, как Quick Find в Notion
-document.addEventListener("keydown", (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault();
     window.Notion?.openQuickCreate();
   }
@@ -106,24 +91,17 @@ document.addEventListener("keydown", (e) => {
 
 // Кнопка-«гамбургер»: раскрыть/свернуть сайдбар с названиями разделов.
 // Выбор запоминается в localStorage — при следующем открытии всё как ты оставил.
-const sideToggle = document.getElementById("sidebar-toggle");
+const sideToggle = document.getElementById('sidebar-toggle');
 function applySidebar(open) {
-  document.documentElement.classList.toggle("sidebar-open", open);
-  DB.set("sidebarOpen", open ? 1 : 0);
+  document.documentElement.classList.toggle('sidebar-open', open);
+  DB.set('sidebarOpen', open ? 1 : 0);
 }
-if (sideToggle)
-  sideToggle.addEventListener("click", () =>
-    applySidebar(!document.documentElement.classList.contains("sidebar-open")),
-  );
-if (DB.get("sidebarOpen", 0))
-  document.documentElement.classList.add("sidebar-open");
+if (sideToggle) sideToggle.addEventListener('click', () =>
+  applySidebar(!document.documentElement.classList.contains('sidebar-open')));
+if (DB.get('sidebarOpen', 0)) document.documentElement.classList.add('sidebar-open');
 
 // Старт: открываем страницу из адреса (или «Сегодня» по умолчанию)
-showPage(
-  location.hash.slice(1) === "calendar"
-    ? "agenda"
-    : location.hash.slice(1) || "today",
-);
+showPage(location.hash.slice(1) || 'today');
 
 // Иконки в самой оболочке (меню и шапка) рисуем один раз при загрузке
 if (window.lucide) lucide.createIcons();
